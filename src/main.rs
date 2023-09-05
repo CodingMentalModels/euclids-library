@@ -1,3 +1,26 @@
+mod game;
+
+use bevy::prelude::*;
+use bevy_mod_raycast::DefaultRaycastingPlugin;
+
+use game::assets::AssetsPlugin;
+use game::input::InputPlugin;
+use game::pause::PausePlugin;
+
+use crate::game::input::MouseoverRaycastSet;
+use crate::game::resources::*;
+use crate::game::ui::UIPlugin;
+
 fn main() {
-    println!("Hello, world!");
+    App::new()
+        .add_plugins((
+            DefaultPlugins,
+            DefaultRaycastingPlugin::<MouseoverRaycastSet>::default(),
+        ))
+        .add_plugins(AssetsPlugin)
+        .add_plugins(UIPlugin)
+        .add_plugins(InputPlugin)
+        .add_plugins(PausePlugin)
+        .add_state::<GameState>()
+        .run();
 }

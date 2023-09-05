@@ -1573,6 +1573,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "euclids-library"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy_egui",
+ "bevy_mod_raycast",
+ "egui",
+ "petgraph",
+ "rand",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "event-listener"
 version = "2.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2471,20 +2485,6 @@ checksum = "77a8165726e8236064dbb45459242600304b42a5ea24ee2948e18e023bf7ba84"
 dependencies = [
  "overload",
  "winapi",
-]
-
-[[package]]
-name = "nucleotide"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "bevy_egui",
- "bevy_mod_raycast",
- "egui",
- "petgraph",
- "rand",
- "serde",
- "serde_json",
 ]
 
 [[package]]
