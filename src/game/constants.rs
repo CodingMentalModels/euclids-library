@@ -6,9 +6,17 @@ pub const ENEMY_SPEC_DIRECTORY: &str = "assets/specs/enemies/";
 // UI
 
 // Map
+pub const DEFAULT_MAP_WIDTH: usize = 50;
+pub const DEFAULT_MAP_HEIGHT: usize = 50;
+pub const TILE_WIDTH: usize = 32;
+pub const TILE_HEIGHT: usize = 32;
+pub const ASCII_TILE_FONT_SIZE: f32 = 40.;
 
 // Colors
 pub const BLUEPRINT_BLUE: (f32, f32, f32) = (0.25, 0.25, 0.75);
+
+// Ascii
+pub const MIDDLE_DOT: char = '\u{00B7}';
 
 // Greek Letters
 pub const ALPHA_LOWER: char = 'α';
