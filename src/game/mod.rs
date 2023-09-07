@@ -5,5 +5,6 @@ pub mod input;
 pub mod pause;
 pub mod resources;
 pub mod specs;
+pub mod tiles;
 pub mod ui;
 pub mod ui_state;
