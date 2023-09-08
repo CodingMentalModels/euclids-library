@@ -51,6 +51,20 @@ impl TileGrid {
             .flatten()
             .collect()
     }
+
+    pub fn update(&mut self, i: usize, j: usize, tile: Tile) -> Result<(), TileGridError> {
+        if i >= self.width() || j >= self.height() {
+            return Err(TileGridError::OutOfBounds);
+        }
+
+        self.0[i][j] = tile;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum TileGridError {
+    OutOfBounds,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
