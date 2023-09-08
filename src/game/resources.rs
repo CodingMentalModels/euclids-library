@@ -11,9 +11,13 @@ pub enum GameState {
     #[default]
     LoadingAssets,
     LoadingUI,
+    LoadingMap,
     Exploring,
     Menu,
     Paused,
     GameOver,
     Victory,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Resource)]
+pub struct LoadedFont(pub Handle<Font>);

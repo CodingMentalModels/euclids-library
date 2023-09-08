@@ -21,6 +21,10 @@ impl TileGrid {
         &self.0[i][j]
     }
 
+    pub fn size(&self) -> usize {
+        self.width() * self.height()
+    }
+
     pub fn width(&self) -> usize {
         self.0.len()
     }
@@ -31,6 +35,21 @@ impl TileGrid {
         } else {
             self.0[0].len()
         }
+    }
+
+    pub fn as_i_j_tile_vector(&self) -> Vec<(usize, usize, &Tile)> {
+        self.0
+            .iter()
+            .enumerate()
+            .map(|(i, column)| {
+                column
+                    .iter()
+                    .enumerate()
+                    .map(|(j, tile)| (i, j, tile))
+                    .collect::<Vec<_>>()
+            })
+            .flatten()
+            .collect()
     }
 }
 
@@ -69,5 +88,14 @@ mod tests {
             ]),
             TileGrid::fill(4, 2, Tile::Ascii('a'))
         );
+    }
+    #[test]
+    fn test_tilegrid_i_j_tile_vector() {
+        let grid = TileGrid::fill(4, 9, Tile::Ascii('a'));
+        let v = grid.as_i_j_tile_vector();
+        assert_eq!(v.len(), grid.size());
+
+        assert_eq!(v[0], (0, 0, &Tile::Ascii('a')));
+        assert_eq!(v.last(), Some(&(3, 8, &Tile::Ascii('a'))));
     }
 }

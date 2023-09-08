@@ -4,6 +4,7 @@ use bevy::prelude::*;
 use bevy_mod_raycast::DefaultRaycastingPlugin;
 
 use game::assets::AssetsPlugin;
+use game::exploring::ExploringPlugin;
 use game::input::InputPlugin;
 use game::pause::PausePlugin;
 
@@ -21,6 +22,7 @@ fn main() {
         .add_plugins(UIPlugin)
         .add_plugins(InputPlugin)
         .add_plugins(PausePlugin)
+        .add_plugins(ExploringPlugin)
         .add_state::<GameState>()
         .run();
 }

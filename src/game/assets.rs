@@ -8,10 +8,15 @@ use crate::game::resources::*;
 pub struct AssetsPlugin;
 
 impl Plugin for AssetsPlugin {
-    fn build(&self, app: &mut App) {}
+    fn build(&self, app: &mut App) {
+        app.add_systems(OnEnter(GameState::LoadingAssets), load_assets_system);
+    }
 }
 
 // Systems
+fn load_assets_system(mut commands: Commands) {
+    commands.insert_resource(NextState(Some(GameState::LoadingUI)));
+}
 
 // End Systems
 

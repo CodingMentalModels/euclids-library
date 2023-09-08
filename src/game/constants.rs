@@ -6,8 +6,8 @@ pub const ENEMY_SPEC_DIRECTORY: &str = "assets/specs/enemies/";
 // UI
 
 // Map
-pub const DEFAULT_MAP_WIDTH: usize = 50;
-pub const DEFAULT_MAP_HEIGHT: usize = 50;
+pub const DEFAULT_MAP_WIDTH_IN_TILES: usize = 50;
+pub const DEFAULT_MAP_HEIGHT_IN_TILES: usize = 50;
 pub const TILE_WIDTH: usize = 32;
 pub const TILE_HEIGHT: usize = 32;
 pub const ASCII_TILE_FONT_SIZE: f32 = 40.;
