@@ -3,6 +3,9 @@ use bevy_mod_raycast::{
     print_intersections, DefaultRaycastingPlugin, RaycastMethod, RaycastSource, RaycastSystem,
 };
 
+use super::events::{Direction, MovementEvent};
+use super::resources::GameState;
+
 pub struct InputPlugin;
 
 impl Plugin for InputPlugin {
@@ -31,10 +34,49 @@ pub struct PauseUnpauseEvent;
 // Systems
 pub fn input_system(
     keyboard_input: Res<Input<KeyCode>>,
+    state: Res<State<GameState>>,
     mut pause_unpause_event_writer: EventWriter<PauseUnpauseEvent>,
+    mut movement_event_writer: EventWriter<MovementEvent>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Escape) {
         pause_unpause_event_writer.send(PauseUnpauseEvent);
+    }
+
+    match state.get() {
+        GameState::Exploring => {
+            if keyboard_input.just_pressed(KeyCode::Numpad8) {
+                movement_event_writer.send(MovementEvent(Direction::Up));
+            }
+
+            if keyboard_input.just_pressed(KeyCode::Numpad2) {
+                movement_event_writer.send(MovementEvent(Direction::Down));
+            }
+
+            if keyboard_input.just_pressed(KeyCode::Numpad4) {
+                movement_event_writer.send(MovementEvent(Direction::Left));
+            }
+
+            if keyboard_input.just_pressed(KeyCode::Numpad6) {
+                movement_event_writer.send(MovementEvent(Direction::Right));
+            }
+
+            if keyboard_input.just_pressed(KeyCode::Numpad7) {
+                movement_event_writer.send(MovementEvent(Direction::UpLeft));
+            }
+
+            if keyboard_input.just_pressed(KeyCode::Numpad9) {
+                movement_event_writer.send(MovementEvent(Direction::UpRight));
+            }
+
+            if keyboard_input.just_pressed(KeyCode::Numpad1) {
+                movement_event_writer.send(MovementEvent(Direction::DownLeft));
+            }
+
+            if keyboard_input.just_pressed(KeyCode::Numpad3) {
+                movement_event_writer.send(MovementEvent(Direction::DownRight));
+            }
+        }
+        _ => {}
     }
 }
 
