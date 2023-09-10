@@ -1,5 +1,9 @@
+use std::ops::{Add, AddAssign};
+
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
+
+use super::events::Direction;
 
 #[derive(Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct Map(Vec<MapLayer>);
@@ -60,7 +64,7 @@ impl MapLayer {
         }
     }
 
-    pub fn as_i_j_tile_vector(&self) -> Vec<(usize, usize, &Tile)> {
+    pub fn as_location_and_tile_vector(&self) -> Vec<(TileLocation, &Tile)> {
         self.0
             .iter()
             .enumerate()
@@ -68,7 +72,7 @@ impl MapLayer {
                 column
                     .iter()
                     .enumerate()
-                    .map(|(j, tile)| (i, j, tile))
+                    .map(|(j, tile)| (TileLocation::new(i as i32, j as i32), tile))
                     .collect::<Vec<_>>()
             })
             .flatten()
@@ -138,6 +142,48 @@ pub enum ObjectTile {
     Trap,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
+pub struct TileLocation {
+    pub i: i32,
+    pub j: i32,
+}
+
+impl Add for TileLocation {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output {
+        Self::new(self.i + rhs.i, self.j + rhs.j)
+    }
+}
+
+impl AddAssign for TileLocation {
+    fn add_assign(&mut self, rhs: Self) {
+        self.i = self.i + rhs.i;
+        self.j = self.j + rhs.j;
+    }
+}
+
+impl TileLocation {
+    pub fn new(i: i32, j: i32) -> Self {
+        Self { i, j }
+    }
+
+    pub fn x(&self) -> i32 {
+        self.i
+    }
+
+    pub fn y(&self) -> i32 {
+        self.j
+    }
+
+    pub fn zero() -> Self {
+        Self::new(0, 0)
+    }
+
+    pub fn step(&mut self, direction: Direction) {
+        self += direction.as_tile_location();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -169,10 +215,10 @@ mod tests {
     #[test]
     fn test_map_layer_i_j_tile_vector() {
         let grid = MapLayer::fill(4, 9, Tile::wall());
-        let v = grid.as_i_j_tile_vector();
+        let v = grid.as_location_and_tile_vector();
         assert_eq!(v.len(), grid.size());
 
-        assert_eq!(v[0], (0, 0, &Tile::wall()));
-        assert_eq!(v.last(), Some(&(3, 8, &Tile::wall())));
+        assert_eq!(v[0], (TileLocation::zero(), &Tile::wall()));
+        assert_eq!(v.last(), Some(&(TileLocation::new(3, 8), &Tile::wall())));
     }
 }

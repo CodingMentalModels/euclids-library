@@ -1,3 +1,4 @@
+use bevy::ecs::system::EntityCommands;
 use bevy::window::PrimaryWindow;
 use bevy::{asset::LoadState, prelude::*};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
@@ -8,7 +9,7 @@ use crate::game::constants::*;
 use crate::game::input::MouseoverRaycastSet;
 use crate::game::resources::*;
 
-use super::map::{MapLayer, SurfaceTile, Tile};
+use super::map::{MapLayer, SurfaceTile, Tile, TileLocation};
 use super::world::{LocationComponent, PlayerComponent};
 
 pub struct UIPlugin;
@@ -51,11 +52,11 @@ fn ui_load_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 fn load_map(
     mut commands: Commands,
-    player_query: Query<&LocationComponent, With<PlayerComponent>>,
+    player_query: Query<(Entity, &LocationComponent), With<PlayerComponent>>,
     map: Res<LoadedMap>,
     font: Res<LoadedFont>,
 ) {
-    let player_location = player_query.single();
+    let (player_entity, player_location) = player_query.single();
 
     let map_layer = map
         .0
@@ -63,18 +64,32 @@ fn load_map(
         .expect("Player's layer must exist.");
 
     map_layer
-        .as_i_j_tile_vector()
+        .as_location_and_tile_vector()
         .into_iter()
         .for_each(|(i, j, tile)| {
-            let x = (i * TILE_WIDTH) as f32;
-            let y = (j * TILE_HEIGHT) as f32;
-            info!("Rendering tile at {}, {}", x, y);
-            TileAppearance::from_tile(tile).render(&mut commands, font.0.clone(), Vec2::new(x, y));
+            TileAppearance::from_tile(tile).render(
+                commands.spawn_empty(),
+                font.0.clone(),
+                to_screen_coordinates(TileLocation::new(i, j)),
+            );
         });
 
     let player_tile = TileAppearance::Ascii('@');
-    player_tile.render(&mut commands, font.0.clone(), player_location.location);
+    let player_sprite = player_tile.render(
+        commands
+            .get_entity(player_entity)
+            .expect("Player entity must exist if it was returned from the query."),
+        font.0.clone(),
+        to_screen_coordinates(player_location.location),
+    );
+    commands.entity(player_sprite).insert(PlayerSprite);
 }
+
+// Components
+#[derive(Component, Clone, Copy)]
+struct PlayerSprite;
+
+// End Components
 
 // Helper Structs
 
@@ -97,10 +112,16 @@ impl TileAppearance {
         }
     }
 
-    pub fn render(&self, commands: &mut Commands, font: Handle<Font>, location: Vec2) {
+    pub fn render(
+        &self,
+        entity_commands: EntityCommands,
+        font: Handle<Font>,
+        location: Vec2,
+    ) -> Entity {
+        info!("Rendering tile at {}", location);
         match self {
-            TileAppearance::Ascii(character) => {
-                commands.spawn(TextBundle {
+            TileAppearance::Ascii(character) => entity_commands
+                .insert(TextBundle {
                     text: Text::from_section(
                         *character,
                         TextStyle {
@@ -116,8 +137,8 @@ impl TileAppearance {
                         ..Default::default()
                     },
                     ..Default::default()
-                });
-            }
+                })
+                .id(),
             TileAppearance::Sprite(_) => panic!("Not implemented yet."),
         }
     }
@@ -126,5 +147,11 @@ impl TileAppearance {
 // End Helper Structs
 
 // Helper Functions
-//
+
+fn to_screen_coordinates(location: TileLocation) -> Vec2 {
+    Vec2::new(
+        (location.i * TILE_WIDTH) as f32,
+        (location.j * TILE_HEIGHT) as f32,
+    )
+}
 // End Helper Functions

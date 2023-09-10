@@ -1,11 +1,17 @@
 use bevy::prelude::*;
 
+use super::map::TileLocation;
+
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
 pub struct MovementEvent(pub Direction);
 
 impl MovementEvent {
     pub fn as_vector(&self) -> Vec2 {
         self.0.as_vector()
+    }
+
+    pub fn as_tile_location(&self) -> TileLocation {
+        self.0.as_tile_location()
     }
 }
 
@@ -32,6 +38,19 @@ impl Direction {
             Self::DownLeft => Vec2::NEG_X + Vec2::NEG_Y,
             Self::Left => Vec2::NEG_X,
             Self::UpLeft => Vec2::NEG_X + Vec2::Y,
+        }
+    }
+
+    pub fn as_tile_location(&self) -> TileLocation {
+        match self {
+            Self::Up => TileLocation::new(0, 1),
+            Self::UpRight => TileLocation::new(1, 1),
+            Self::Right => TileLocation::new(1, 0),
+            Self::DownRight => TileLocation::new(1, -1),
+            Self::Down => TileLocation::new(0, -1),
+            Self::DownLeft => TileLocation::new(-1, -1),
+            Self::Left => TileLocation::new(-1, 0),
+            Self::UpLeft => TileLocation::new(-1, 1),
         }
     }
 }

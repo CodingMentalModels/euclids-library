@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use super::resources::GameState;
+use super::{map::TileLocation, resources::GameState};
 
 pub struct WorldPlugin;
 
@@ -16,7 +16,7 @@ impl Plugin for WorldPlugin {
 // Systems
 
 fn initialize_player_system(mut commands: Commands) {
-    spawn_player(&mut commands, 0, Vec2::ZERO);
+    spawn_player(&mut commands, 0, TileLocation::zero());
 
     commands.insert_resource(NextState(Some(GameState::LoadingMap)));
 }
@@ -30,11 +30,11 @@ pub struct PlayerComponent;
 #[derive(Component, Clone, Copy)]
 pub struct LocationComponent {
     pub map_layer: usize,
-    pub location: Vec2,
+    pub location: TileLocation,
 }
 
 impl LocationComponent {
-    pub fn translate(&mut self, amount: Vec2) {
+    pub fn translate(&mut self, amount: TileLocation) {
         self.location += amount;
     }
 }
@@ -43,7 +43,7 @@ impl LocationComponent {
 
 // Helper Functions
 
-fn spawn_player(commands: &mut Commands, map_layer: usize, location: Vec2) -> Entity {
+fn spawn_player(commands: &mut Commands, map_layer: usize, location: TileLocation) -> Entity {
     commands
         .spawn_empty()
         .insert(LocationComponent {
@@ -55,3 +55,7 @@ fn spawn_player(commands: &mut Commands, map_layer: usize, location: Vec2) -> En
 }
 
 // End Helper Functions
+
+// Helper Structs
+
+// End Helper Structs
