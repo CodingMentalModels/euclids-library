@@ -3,6 +3,8 @@ use rand::rngs::ThreadRng;
 
 use crate::game::constants::*;
 
+use super::map::Map;
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Resource)]
 pub struct PausedState(pub GameState);
 
@@ -11,6 +13,7 @@ pub enum GameState {
     #[default]
     LoadingAssets,
     LoadingUI,
+    InitializingWorld,
     LoadingMap,
     Exploring,
     Menu,
@@ -21,3 +24,6 @@ pub enum GameState {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Resource)]
 pub struct LoadedFont(pub Handle<Font>);
+
+#[derive(Debug, PartialEq, Eq, Hash, Resource)]
+pub struct LoadedMap(pub Map);

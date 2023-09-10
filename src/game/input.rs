@@ -11,6 +11,7 @@ pub struct InputPlugin;
 impl Plugin for InputPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<PauseUnpauseEvent>()
+            .add_event::<MovementEvent>()
             .add_systems(
                 First,
                 update_raycast_with_cursor.before(RaycastSystem::BuildRays::<MouseoverRaycastSet>),

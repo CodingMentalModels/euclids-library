@@ -3,8 +3,9 @@ use bevy::prelude::*;
 use super::{
     constants::*,
     events::MovementEvent,
-    resources::GameState,
-    tiles::{Tile, TileGrid},
+    map::{MapLayer, Tile},
+    resources::{GameState, LoadedMap},
+    world::{LocationComponent, PlayerComponent},
 };
 
 pub struct ExploringPlugin;
@@ -22,24 +23,24 @@ impl Plugin for ExploringPlugin {
 // Systems
 
 pub fn load_map_system(mut commands: Commands) {
-    let mut tile_grid = TileGrid::fill(
+    let mut map_layer = MapLayer::fill(
         DEFAULT_MAP_WIDTH_IN_TILES,
         DEFAULT_MAP_HEIGHT_IN_TILES,
-        Tile::Ascii(MIDDLE_DOT),
+        Tile::empty_ground(),
     );
 
-    commands.insert_resource(tile_grid);
+    commands.insert_resource(LoadedMap(map_layer.into()));
     commands.insert_resource(NextState(Some(GameState::Exploring)));
 }
 
 pub fn move_player_system(
     mut movement_event_reader: EventReader<MovementEvent>,
-    mut player_query: Query<(&mut LocationComponent), With<PlayerComponent>>,
+    mut player_query: Query<&mut LocationComponent, With<PlayerComponent>>,
 ) {
     let mut player_location = player_query.single_mut();
 
     for movement_event in movement_event_reader.iter() {
-        player_location.0 = player_location.0 + movement_event.as_vector();
+        player_location.translate(movement_event.0.as_vector());
     }
 }
 
@@ -47,11 +48,6 @@ pub fn move_player_system(
 
 // Components
 
-#[derive(Component, Clone, Copy)]
-pub struct PlayerComponent;
-
-#[derive(Component, Clone, Copy)]
-pub struct LocationComponent(Vec2);
 // End Components
 
 // Helper Functions

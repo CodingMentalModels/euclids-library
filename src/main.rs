@@ -7,6 +7,7 @@ use game::assets::AssetsPlugin;
 use game::exploring::ExploringPlugin;
 use game::input::InputPlugin;
 use game::pause::PausePlugin;
+use game::world::WorldPlugin;
 
 use crate::game::input::MouseoverRaycastSet;
 use crate::game::resources::*;
@@ -22,6 +23,7 @@ fn main() {
         .add_plugins(UIPlugin)
         .add_plugins(InputPlugin)
         .add_plugins(PausePlugin)
+        .add_plugins(WorldPlugin)
         .add_plugins(ExploringPlugin)
         .add_state::<GameState>()
         .run();
