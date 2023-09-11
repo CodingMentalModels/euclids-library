@@ -40,7 +40,7 @@ pub fn move_player_system(
     let mut player_location = player_query.single_mut();
 
     for movement_event in movement_event_reader.iter() {
-        player_location.translate(movement_event.0.as_vector());
+        player_location.translate(movement_event.0.as_tile_location());
     }
 }
 

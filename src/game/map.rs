@@ -180,7 +180,9 @@ impl TileLocation {
     }
 
     pub fn step(&mut self, direction: Direction) {
-        self += direction.as_tile_location();
+        let new_self = self.clone() + direction.as_tile_location();
+        self.i = new_self.i;
+        self.j = new_self.j;
     }
 }
 

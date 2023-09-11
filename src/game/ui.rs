@@ -19,7 +19,11 @@ impl Plugin for UIPlugin {
         app.add_plugins(EguiPlugin)
             .add_systems(OnEnter(GameState::LoadingUI), configure_visuals)
             .add_systems(OnEnter(GameState::LoadingUI), ui_load_system)
-            .add_systems(OnEnter(GameState::Exploring), load_map);
+            .add_systems(OnEnter(GameState::Exploring), load_map)
+            .add_systems(
+                Update,
+                update_text_positions.run_if(in_state(GameState::Exploring)),
+            );
     }
 }
 
@@ -66,11 +70,11 @@ fn load_map(
     map_layer
         .as_location_and_tile_vector()
         .into_iter()
-        .for_each(|(i, j, tile)| {
+        .for_each(|(tile_location, tile)| {
             TileAppearance::from_tile(tile).render(
                 commands.spawn_empty(),
                 font.0.clone(),
-                to_screen_coordinates(TileLocation::new(i, j)),
+                to_screen_coordinates(tile_location),
             );
         });
 
@@ -83,6 +87,14 @@ fn load_map(
         to_screen_coordinates(player_location.location),
     );
     commands.entity(player_sprite).insert(PlayerSprite);
+}
+
+fn update_text_positions(mut query: Query<(&LocationComponent, &mut Style), With<Text>>) {
+    for (location, mut style) in query.iter_mut() {
+        let screen_coordinates = to_screen_coordinates(location.location);
+        style.left = Val::Px(screen_coordinates.x);
+        style.bottom = Val::Px(screen_coordinates.y);
+    }
 }
 
 // Components
@@ -114,7 +126,7 @@ impl TileAppearance {
 
     pub fn render(
         &self,
-        entity_commands: EntityCommands,
+        mut entity_commands: EntityCommands,
         font: Handle<Font>,
         location: Vec2,
     ) -> Entity {
@@ -150,8 +162,8 @@ impl TileAppearance {
 
 fn to_screen_coordinates(location: TileLocation) -> Vec2 {
     Vec2::new(
-        (location.i * TILE_WIDTH) as f32,
-        (location.j * TILE_HEIGHT) as f32,
+        (location.i * (TILE_WIDTH as i32)) as f32,
+        (location.j * (TILE_HEIGHT as i32)) as f32,
     )
 }
 // End Helper Functions
