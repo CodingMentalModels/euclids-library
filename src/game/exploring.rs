@@ -28,6 +28,7 @@ pub fn load_map_system(mut commands: Commands) {
         DEFAULT_MAP_HEIGHT_IN_TILES,
         Tile::empty_ground(),
     );
+    map_layer.update_edges(&Tile::wall());
 
     commands.insert_resource(LoadedMap(map_layer.into()));
     commands.insert_resource(NextState(Some(GameState::Exploring)));

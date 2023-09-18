@@ -87,6 +87,25 @@ impl MapLayer {
         self.0[i][j] = tile;
         Ok(())
     }
+
+    pub fn update_edges(&mut self, tile: &Tile) {
+        let width = self.width();
+        let height = self.height();
+        if width == 0 || height == 0 {
+            return;
+        }
+        // Top & Bottom
+        (0..width).into_iter().for_each(|i| {
+            self.0[i][0] = tile.clone();
+            self.0[i][height - 1] = tile.clone();
+        });
+
+        // Left & Right
+        (0..height).into_iter().for_each(|j| {
+            self.0[0][j] = tile.clone();
+            self.0[width - 1][j] = tile.clone();
+        })
+    }
 }
 
 #[derive(Debug, Clone, Copy, Hash, Deserialize, Serialize)]
