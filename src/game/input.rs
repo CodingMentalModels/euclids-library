@@ -3,7 +3,7 @@ use bevy_mod_raycast::{
     print_intersections, DefaultRaycastingPlugin, RaycastMethod, RaycastSource, RaycastSystem,
 };
 
-use super::events::{Direction, MovementEvent};
+use super::events::{CameraZoomEvent, Direction, MovementEvent};
 use super::resources::GameState;
 
 pub struct InputPlugin;
@@ -12,6 +12,7 @@ impl Plugin for InputPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<PauseUnpauseEvent>()
             .add_event::<MovementEvent>()
+            .add_event::<CameraZoomEvent>()
             .add_systems(
                 First,
                 update_raycast_with_cursor.before(RaycastSystem::BuildRays::<MouseoverRaycastSet>),
@@ -38,6 +39,7 @@ pub fn input_system(
     state: Res<State<GameState>>,
     mut pause_unpause_event_writer: EventWriter<PauseUnpauseEvent>,
     mut movement_event_writer: EventWriter<MovementEvent>,
+    mut zoom_event_writer: EventWriter<CameraZoomEvent>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Escape) {
         pause_unpause_event_writer.send(PauseUnpauseEvent);
@@ -45,6 +47,16 @@ pub fn input_system(
 
     match state.get() {
         GameState::Exploring => {
+            // Zoom
+            if keyboard_input.just_pressed(KeyCode::Equals) {
+                zoom_event_writer.send(CameraZoomEvent(1));
+            }
+
+            if keyboard_input.just_pressed(KeyCode::Minus) {
+                zoom_event_writer.send(CameraZoomEvent(-1));
+            }
+
+            // Movement
             if keyboard_input.just_pressed(KeyCode::Numpad8) {
                 movement_event_writer.send(MovementEvent(Direction::Up));
             }

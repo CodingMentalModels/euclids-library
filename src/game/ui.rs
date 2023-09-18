@@ -1,4 +1,5 @@
 use bevy::ecs::system::EntityCommands;
+use bevy::render::camera::CameraProjection;
 use bevy::window::PrimaryWindow;
 use bevy::{asset::LoadState, prelude::*};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
@@ -9,6 +10,7 @@ use crate::game::constants::*;
 use crate::game::input::MouseoverRaycastSet;
 use crate::game::resources::*;
 
+use super::events::CameraZoomEvent;
 use super::map::{MapLayer, SurfaceTile, Tile, TileLocation};
 use super::world::{LocationComponent, PlayerComponent};
 
@@ -20,6 +22,10 @@ impl Plugin for UIPlugin {
             .add_systems(OnEnter(GameState::LoadingUI), configure_visuals)
             .add_systems(OnEnter(GameState::LoadingUI), ui_load_system)
             .add_systems(OnEnter(GameState::Exploring), load_map)
+            .add_systems(
+                Update,
+                update_camera_zoom.run_if(in_state(GameState::Exploring)),
+            )
             .add_systems(
                 Update,
                 update_text_positions.run_if(in_state(GameState::Exploring)),
@@ -94,6 +100,19 @@ fn update_text_positions(mut query: Query<(&LocationComponent, &mut Style), With
         let screen_coordinates = to_screen_coordinates(location.location);
         style.left = Val::Px(screen_coordinates.x);
         style.bottom = Val::Px(screen_coordinates.y);
+    }
+}
+
+fn update_camera_zoom(
+    mut query: Query<&mut OrthographicProjection, With<Camera2d>>,
+    mut zoom_event_reader: EventReader<CameraZoomEvent>,
+) {
+    for mut orthographic_projection in query.iter_mut() {
+        for event in zoom_event_reader.iter() {
+            let amount = ZOOM_SPEED * (event.0 as f32);
+            orthographic_projection.scale -= amount;
+            info!("Zoom: {:?}", orthographic_projection.scale);
+        }
     }
 }
 
