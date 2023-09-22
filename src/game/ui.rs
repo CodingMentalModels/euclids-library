@@ -10,7 +10,7 @@ use crate::game::input::MouseoverRaycastSet;
 use crate::game::resources::*;
 
 use super::map::{MapLayer, SurfaceTile, Tile, TileLocation};
-use super::world::{LocationComponent, PlayerComponent};
+use super::player::{LocationComponent, PlayerComponent};
 
 pub struct UIPlugin;
 
@@ -64,7 +64,7 @@ fn load_map(
 
     let map_layer = map
         .0
-        .get(player_location.map_layer)
+        .get(player_location.0.get_map_layer())
         .expect("Player's layer must exist.");
 
     map_layer
@@ -84,14 +84,14 @@ fn load_map(
             .get_entity(player_entity)
             .expect("Player entity must exist if it was returned from the query."),
         font.0.clone(),
-        to_screen_coordinates(player_location.location),
+        to_screen_coordinates(player_location.0.get_tile_location()),
     );
     commands.entity(player_sprite).insert(PlayerSprite);
 }
 
 fn update_text_positions(mut query: Query<(&LocationComponent, &mut Style), With<Text>>) {
     for (location, mut style) in query.iter_mut() {
-        let screen_coordinates = to_screen_coordinates(location.location);
+        let screen_coordinates = to_screen_coordinates(location.0.get_tile_location());
         style.left = Val::Px(screen_coordinates.x);
         style.bottom = Val::Px(screen_coordinates.y);
     }

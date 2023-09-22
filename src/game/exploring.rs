@@ -4,8 +4,8 @@ use super::{
     constants::*,
     events::MovementEvent,
     map::{MapLayer, Tile},
+    player::{LocationComponent, PlayerComponent},
     resources::{GameState, LoadedMap},
-    world::{LocationComponent, PlayerComponent},
 };
 
 pub struct ExploringPlugin;
