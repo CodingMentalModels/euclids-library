@@ -106,10 +106,13 @@ fn update_camera_zoom(
     mut query: Query<&mut OrthographicProjection, With<Camera2d>>,
     mut zoom_event_reader: EventReader<CameraZoomEvent>,
 ) {
+    // TODO Add bounds to the zoom
     for mut orthographic_projection in query.iter_mut() {
         for event in zoom_event_reader.iter() {
             let amount = CAMERA_ZOOM_SPEED * (event.0 as f32);
-            orthographic_projection.scale -= amount;
+            let log_zoom = orthographic_projection.scale
+                * CAMERA_ZOOM_LOG_BASE.powf(CAMERA_ZOOM_SPEED * amount);
+            orthographic_projection.scale = log_zoom;
             info!("Zoom: {:?}", orthographic_projection.scale);
         }
     }
