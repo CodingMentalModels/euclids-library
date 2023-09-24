@@ -3,6 +3,9 @@ use bevy::prelude::*;
 use super::map::TileLocation;
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
+pub struct CameraZoomEvent(pub i32);
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
 pub struct MovementEvent(pub Direction);
 
 impl MovementEvent {
