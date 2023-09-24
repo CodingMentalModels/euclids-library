@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use super::{
     constants::*,
-    events::MovementEvent,
+    events::{CameraMovementEvent, MovementEvent},
     map::{MapLayer, Tile},
     resources::{GameState, LoadedMap},
     world::{LocationComponent, PlayerComponent},
@@ -16,6 +16,10 @@ impl Plugin for ExploringPlugin {
             .add_systems(
                 Update,
                 move_player_system.run_if(in_state(GameState::Exploring)),
+            )
+            .add_systems(
+                Update,
+                move_camera_system.run_if(in_state(GameState::Exploring)),
             );
     }
 }
@@ -42,6 +46,17 @@ pub fn move_player_system(
 
     for movement_event in movement_event_reader.iter() {
         player_location.translate(movement_event.0.as_tile_location());
+    }
+}
+
+pub fn move_camera_system(
+    mut camera_movement_event_reader: EventReader<CameraMovementEvent>,
+    mut query: Query<&mut Transform, With<Camera2d>>,
+) {
+    let mut transform = query.single_mut();
+    for event in camera_movement_event_reader.iter() {
+        transform.translation += event.0.as_vector().extend(0.);
+        info!("New transform: {:?}", transform.translation);
     }
 }
 

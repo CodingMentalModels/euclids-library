@@ -18,6 +18,19 @@ impl MovementEvent {
     }
 }
 
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
+pub struct CameraMovementEvent(pub Direction);
+
+impl CameraMovementEvent {
+    pub fn as_vector(&self) -> Vec2 {
+        self.0.as_vector()
+    }
+
+    pub fn as_tile_location(&self) -> TileLocation {
+        self.0.as_tile_location()
+    }
+}
+
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum Direction {
     Up,
