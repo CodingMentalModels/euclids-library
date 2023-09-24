@@ -5,6 +5,7 @@ pub mod exploring;
 pub mod input;
 pub mod map;
 pub mod pause;
+pub mod player;
 pub mod resources;
 pub mod specs;
 pub mod ui;

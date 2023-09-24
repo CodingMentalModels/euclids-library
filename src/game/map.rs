@@ -162,6 +162,33 @@ pub enum ObjectTile {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
+pub struct MapLocation {
+    map_layer: usize,
+    tile_location: TileLocation,
+}
+
+impl MapLocation {
+    pub fn new(map_layer: usize, tile_location: TileLocation) -> Self {
+        Self {
+            map_layer,
+            tile_location,
+        }
+    }
+
+    pub fn get_map_layer(&self) -> usize {
+        self.map_layer
+    }
+
+    pub fn get_tile_location(&self) -> TileLocation {
+        self.tile_location
+    }
+
+    pub fn translate(&mut self, amount: TileLocation) {
+        self.tile_location += amount;
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct TileLocation {
     pub i: i32,
     pub j: i32,
