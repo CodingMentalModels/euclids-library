@@ -11,7 +11,9 @@ pub const DEFAULT_MAP_HEIGHT_IN_TILES: usize = 50;
 pub const TILE_WIDTH: usize = 32;
 pub const TILE_HEIGHT: usize = 32;
 pub const ASCII_TILE_FONT_SIZE: f32 = 40.;
-pub const ZOOM_SPEED: f32 = 0.9;
+pub const CAMERA_ZOOM_LOG_BASE: f32 = 2.0;
+pub const CAMERA_ZOOM_SPEED: f32 = 0.2;
+pub const CAMERA_MOVE_SPEED: f32 = 10.;
 
 // Colors
 pub const BLUEPRINT_BLUE: (f32, f32, f32) = (0.25, 0.25, 0.75);

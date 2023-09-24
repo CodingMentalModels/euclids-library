@@ -28,7 +28,7 @@ impl Plugin for UIPlugin {
             )
             .add_systems(
                 Update,
-                update_text_positions.run_if(in_state(GameState::Exploring)),
+                update_positions.run_if(in_state(GameState::Exploring)),
             );
     }
 }
@@ -95,11 +95,10 @@ fn load_map(
     commands.entity(player_sprite).insert(PlayerSprite);
 }
 
-fn update_text_positions(mut query: Query<(&LocationComponent, &mut Style), With<Text>>) {
-    for (location, mut style) in query.iter_mut() {
+fn update_positions(mut query: Query<(&LocationComponent, &mut Transform)>) {
+    for (location, mut transform) in query.iter_mut() {
         let screen_coordinates = to_screen_coordinates(location.0.get_tile_location());
-        style.left = Val::Px(screen_coordinates.x);
-        style.bottom = Val::Px(screen_coordinates.y);
+        *transform = Transform::from_translation(screen_coordinates.extend(0.));
     }
 }
 
@@ -107,10 +106,13 @@ fn update_camera_zoom(
     mut query: Query<&mut OrthographicProjection, With<Camera2d>>,
     mut zoom_event_reader: EventReader<CameraZoomEvent>,
 ) {
+    // TODO Add bounds to the zoom
     for mut orthographic_projection in query.iter_mut() {
         for event in zoom_event_reader.iter() {
-            let amount = ZOOM_SPEED * (event.0 as f32);
-            orthographic_projection.scale -= amount;
+            let amount = CAMERA_ZOOM_SPEED * (event.0 as f32);
+            let log_zoom = orthographic_projection.scale
+                * CAMERA_ZOOM_LOG_BASE.powf(CAMERA_ZOOM_SPEED * amount);
+            orthographic_projection.scale = log_zoom;
             info!("Zoom: {:?}", orthographic_projection.scale);
         }
     }
@@ -152,7 +154,7 @@ impl TileAppearance {
         info!("Rendering tile at {}", location);
         match self {
             TileAppearance::Ascii(character) => entity_commands
-                .insert(TextBundle {
+                .insert(Text2dBundle {
                     text: Text::from_section(
                         *character,
                         TextStyle {
@@ -161,12 +163,7 @@ impl TileAppearance {
                             color: Color::BLUE,
                         },
                     ),
-                    style: Style {
-                        position_type: PositionType::Absolute,
-                        left: Val::Px(location.x),
-                        bottom: Val::Px(location.y),
-                        ..Default::default()
-                    },
+                    transform: Transform::from_translation(location.extend(0.)),
                     ..Default::default()
                 })
                 .id(),

@@ -39,9 +39,9 @@ pub fn input_system(
     keyboard_input: Res<Input<KeyCode>>,
     state: Res<State<GameState>>,
     mut pause_unpause_event_writer: EventWriter<PauseUnpauseEvent>,
-    mut movement_event_writer: EventWriter<MovementEvent>,
-    mut camera_movement_event_writer: EventWriter<CameraMovementEvent>,
-    mut zoom_event_writer: EventWriter<CameraZoomEvent>,
+    movement_event_writer: EventWriter<MovementEvent>,
+    camera_movement_event_writer: EventWriter<CameraMovementEvent>,
+    zoom_event_writer: EventWriter<CameraZoomEvent>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Escape) {
         pause_unpause_event_writer.send(PauseUnpauseEvent);
@@ -51,6 +51,7 @@ pub fn input_system(
         GameState::Exploring => {
             handle_movement(&keyboard_input, movement_event_writer);
             handle_camera_movement(&keyboard_input, camera_movement_event_writer);
+            handle_camera_zoom(&keyboard_input, zoom_event_writer);
         }
         _ => {}
     }
@@ -113,6 +114,19 @@ fn handle_movement(
 
     if keyboard_input.just_pressed(KeyCode::Numpad3) {
         movement_event_writer.send(MovementEvent(Direction::DownRight));
+    }
+}
+
+fn handle_camera_zoom(
+    keyboard_input: &Res<Input<KeyCode>>,
+    mut zoom_event_writer: EventWriter<CameraZoomEvent>,
+) {
+    if keyboard_input.just_pressed(KeyCode::Equals) {
+        zoom_event_writer.send(CameraZoomEvent(1));
+    }
+
+    if keyboard_input.just_pressed(KeyCode::Minus) {
+        zoom_event_writer.send(CameraZoomEvent(-1));
     }
 }
 
