@@ -55,7 +55,7 @@ pub fn move_camera_system(
 ) {
     let mut transform = query.single_mut();
     for event in camera_movement_event_reader.iter() {
-        transform.translation += event.0.as_vector().extend(0.);
+        transform.translation += event.0.as_vector().extend(0.) * CAMERA_MOVE_SPEED;
         info!("New transform: {:?}", transform.translation);
     }
 }

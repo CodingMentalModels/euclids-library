@@ -108,7 +108,7 @@ fn update_camera_zoom(
 ) {
     for mut orthographic_projection in query.iter_mut() {
         for event in zoom_event_reader.iter() {
-            let amount = ZOOM_SPEED * (event.0 as f32);
+            let amount = CAMERA_ZOOM_SPEED * (event.0 as f32);
             orthographic_projection.scale -= amount;
             info!("Zoom: {:?}", orthographic_projection.scale);
         }
