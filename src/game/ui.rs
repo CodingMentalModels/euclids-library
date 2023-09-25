@@ -72,11 +72,19 @@ fn load_map(
     let map_layer = map
         .0
         .get(player_location.0.get_map_layer())
-        .expect("Player's layer must exist.")
-        .clone();
+        .expect("Player's layer must exist.");
 
-    let tile_grid = TileGrid::from_map_layer(map_layer);
+    let tile_grid = TileGrid::from_map_layer(map_layer.clone());
     tile_grid.render(&mut commands, font.0.clone());
+
+    map_layer
+        .as_location_and_tile_vector()
+        .into_iter()
+        .for_each(|(location, tile)| {
+            if let Some(particle_spec) = tile.get_surface().get_particle_spec() {
+                particle_spec.render(&mut commands, font.0.clone(), location);
+            };
+        });
 
     let player_tile = TileAppearance::Ascii(AsciiTileAppearance::from('@'));
     let player_sprite = player_tile.render(

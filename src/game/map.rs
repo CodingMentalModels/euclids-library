@@ -3,7 +3,14 @@ use std::ops::{Add, AddAssign};
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use super::events::Direction;
+use super::{
+    events::Direction,
+    particle::{
+        ParticleAppearance, ParticleDuration, ParticleLocation, ParticleMovement, ParticleSpec,
+        ParticleTiming,
+    },
+    ui_state::{AsciiTileAppearance, ColorCode},
+};
 
 #[derive(Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct Map(Vec<MapLayer>);
@@ -162,6 +169,20 @@ pub enum SurfaceTile {
     Ground,
     Wall,
     Fireplace,
+}
+
+impl SurfaceTile {
+    pub fn get_particle_spec(&self) -> Option<ParticleSpec> {
+        match self {
+            Self::Fireplace => Some(ParticleSpec::new(
+                ParticleTiming::Every(ParticleDuration::Exact(500)),
+                ParticleLocation::Exact(TileLocation::zero()),
+                ParticleMovement::Constant(Direction::Up),
+                ParticleAppearance::Constant(AsciiTileAppearance::new('*', ColorCode::Gray)),
+            )),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]

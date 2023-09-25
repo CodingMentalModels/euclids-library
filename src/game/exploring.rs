@@ -33,7 +33,9 @@ pub fn load_map_system(mut commands: Commands) {
         Tile::empty_ground(),
     );
     map_layer.update_edges(&Tile::wall());
-    map_layer.update(5, 5, Tile::empty(SurfaceTile::Fireplace));
+    map_layer
+        .update(5, 5, Tile::empty(SurfaceTile::Fireplace))
+        .expect("5, 5 exists because we're setting it up that way.");
 
     commands.insert_resource(LoadedMap(map_layer.into()));
     commands.insert_resource(NextState(Some(GameState::Exploring)));

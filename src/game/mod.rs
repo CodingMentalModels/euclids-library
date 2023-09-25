@@ -4,6 +4,7 @@ pub mod events;
 pub mod exploring;
 pub mod input;
 pub mod map;
+pub mod particle;
 pub mod pause;
 pub mod player;
 pub mod resources;

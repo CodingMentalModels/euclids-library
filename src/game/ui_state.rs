@@ -1,5 +1,6 @@
 use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use super::constants::*;
 use super::map::{MapLayer, SurfaceTile, Tile, TileLocation};
@@ -52,7 +53,7 @@ impl TileGrid {
 
     pub fn render(&self, commands: &mut Commands, font: Handle<Font>) {
         for (location, tile) in self.enumerated().iter() {
-            tile.render(
+            let _tile_entity = tile.render(
                 &mut (commands.spawn_empty()),
                 font.clone(),
                 Self::tile_to_world_coordinates(*location),
@@ -116,7 +117,7 @@ impl TileAppearance {
 
     pub fn render(
         &self,
-        mut entity_commands: &mut EntityCommands,
+        entity_commands: &mut EntityCommands,
         font: Handle<Font>,
         location: Vec2,
     ) -> Entity {
@@ -141,7 +142,7 @@ impl TileAppearance {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct AsciiTileAppearance {
     character: char,
     color_code: ColorCode,
@@ -166,10 +167,11 @@ impl AsciiTileAppearance {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ColorCode {
     AntiqueWhite,
     Red,
+    Gray,
 }
 
 impl ColorCode {
@@ -177,6 +179,7 @@ impl ColorCode {
         match self {
             Self::AntiqueWhite => Color::ANTIQUE_WHITE,
             Self::Red => Color::RED,
+            Self::Gray => Color::GRAY,
         }
     }
 }
