@@ -28,7 +28,7 @@ impl From<MapLayer> for Map {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct MapLayer(Vec<Vec<Tile>>);
 
 impl MapLayer {
@@ -38,6 +38,10 @@ impl MapLayer {
             assert!(tiles.iter().all(|column| column.len() == height));
         }
         Self(tiles)
+    }
+
+    pub fn get_tiles_cloned(&self) -> Vec<Vec<Tile>> {
+        self.0.clone()
     }
 
     pub fn fill(width: usize, height: usize, tile: Tile) -> Self {

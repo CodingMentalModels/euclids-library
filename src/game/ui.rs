@@ -13,7 +13,7 @@ use crate::game::resources::*;
 use super::events::CameraZoomEvent;
 use super::map::{MapLayer, SurfaceTile, Tile, TileLocation};
 use super::player::{LocationComponent, PlayerComponent};
-use super::ui_state::TileAppearance;
+use super::ui_state::{TileAppearance, TileGrid};
 
 pub struct UIPlugin;
 
@@ -72,18 +72,11 @@ fn load_map(
     let map_layer = map
         .0
         .get(player_location.0.get_map_layer())
-        .expect("Player's layer must exist.");
+        .expect("Player's layer must exist.")
+        .clone();
 
-    map_layer
-        .as_location_and_tile_vector()
-        .into_iter()
-        .for_each(|(tile_location, tile)| {
-            TileAppearance::from_tile(tile).render(
-                &mut commands.spawn_empty(),
-                font.0.clone(),
-                tile_to_world_coordinates(tile_location),
-            );
-        });
+    let tile_grid = TileGrid::from_map_layer(map_layer);
+    tile_grid.render(&mut commands, font.0.clone());
 
     let player_tile = TileAppearance::Ascii('@');
     let player_sprite = player_tile.render(
@@ -91,14 +84,15 @@ fn load_map(
             .get_entity(player_entity)
             .expect("Player entity must exist if it was returned from the query."),
         font.0.clone(),
-        tile_to_world_coordinates(player_location.0.get_tile_location()),
+        TileGrid::tile_to_world_coordinates(player_location.0.get_tile_location()),
     );
     commands.entity(player_sprite).insert(PlayerSprite);
 }
 
 fn update_positions(mut query: Query<(&LocationComponent, &mut Transform)>) {
     for (location, mut transform) in query.iter_mut() {
-        let screen_coordinates = tile_to_world_coordinates(location.0.get_tile_location());
+        let screen_coordinates =
+            TileGrid::tile_to_world_coordinates(location.0.get_tile_location());
         *transform = Transform::from_translation(screen_coordinates.extend(0.));
     }
 }

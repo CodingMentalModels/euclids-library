@@ -2,7 +2,7 @@ use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
 
 use super::constants::*;
-use super::map::{SurfaceTile, Tile, TileLocation};
+use super::map::{MapLayer, SurfaceTile, Tile, TileLocation};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Resource)]
 pub struct ExploringUIState {
@@ -17,6 +17,20 @@ pub struct TileGrid {
 impl TileGrid {
     pub fn new(grid: Vec<Vec<TileAppearance>>) -> Self {
         Self { grid }
+    }
+
+    pub fn from_map_layer(layer: MapLayer) -> Self {
+        Self::new(
+            layer
+                .get_tiles_cloned()
+                .into_iter()
+                .map(|row| {
+                    row.into_iter()
+                        .map(|tile| TileAppearance::from_tile(&tile))
+                        .collect()
+                })
+                .collect(),
+        )
     }
 
     pub fn get(&self, i: usize, j: usize) -> Option<TileAppearance> {
@@ -36,14 +50,21 @@ impl TileGrid {
         }
     }
 
-    pub fn render(&self, mut entity_commands: EntityCommands, font: Handle<Font>) {
+    pub fn render(&self, commands: &mut Commands, font: Handle<Font>) {
         for (location, tile) in self.enumerated().iter() {
             tile.render(
-                &mut entity_commands,
+                &mut (commands.spawn_empty()),
                 font.clone(),
-                tile_to_world_coordinates(*location),
+                Self::tile_to_world_coordinates(*location),
             );
         }
+    }
+
+    pub fn tile_to_world_coordinates(location: TileLocation) -> Vec2 {
+        Vec2::new(
+            (location.i * (TILE_WIDTH as i32)) as f32,
+            (location.j * (TILE_HEIGHT as i32)) as f32,
+        )
     }
 
     fn enumerated(&self) -> Vec<(TileLocation, TileAppearance)> {
@@ -123,11 +144,5 @@ pub enum UIStateError {
 }
 
 // Helper Functions
-fn tile_to_world_coordinates(location: TileLocation) -> Vec2 {
-    Vec2::new(
-        (location.i * (TILE_WIDTH as i32)) as f32,
-        (location.j * (TILE_HEIGHT as i32)) as f32,
-    )
-}
 
 // End Helper Functions
