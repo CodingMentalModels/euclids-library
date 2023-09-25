@@ -13,6 +13,7 @@ use crate::game::resources::*;
 use super::events::CameraZoomEvent;
 use super::map::{MapLayer, SurfaceTile, Tile, TileLocation};
 use super::player::{LocationComponent, PlayerComponent};
+use super::ui_state::TileAppearance;
 
 pub struct UIPlugin;
 
@@ -78,26 +79,26 @@ fn load_map(
         .into_iter()
         .for_each(|(tile_location, tile)| {
             TileAppearance::from_tile(tile).render(
-                commands.spawn_empty(),
+                &mut commands.spawn_empty(),
                 font.0.clone(),
-                to_screen_coordinates(tile_location),
+                tile_to_world_coordinates(tile_location),
             );
         });
 
     let player_tile = TileAppearance::Ascii('@');
     let player_sprite = player_tile.render(
-        commands
+        &mut commands
             .get_entity(player_entity)
             .expect("Player entity must exist if it was returned from the query."),
         font.0.clone(),
-        to_screen_coordinates(player_location.0.get_tile_location()),
+        tile_to_world_coordinates(player_location.0.get_tile_location()),
     );
     commands.entity(player_sprite).insert(PlayerSprite);
 }
 
 fn update_positions(mut query: Query<(&LocationComponent, &mut Transform)>) {
     for (location, mut transform) in query.iter_mut() {
-        let screen_coordinates = to_screen_coordinates(location.0.get_tile_location());
+        let screen_coordinates = tile_to_world_coordinates(location.0.get_tile_location());
         *transform = Transform::from_translation(screen_coordinates.extend(0.));
     }
 }
@@ -126,60 +127,8 @@ struct PlayerSprite;
 
 // Helper Structs
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TileAppearance {
-    Ascii(char),
-    Sprite(Handle<TextureAtlas>),
-}
-
-impl TileAppearance {
-    pub fn from_tile(tile: &Tile) -> Self {
-        match tile.get_top_of_stack() {
-            Some(object_tile) => {
-                panic!("Not implemented yet.");
-            }
-            None => match tile.get_surface() {
-                SurfaceTile::Ground => TileAppearance::Ascii(MIDDLE_DOT),
-                SurfaceTile::Wall => TileAppearance::Ascii('#'),
-            },
-        }
-    }
-
-    pub fn render(
-        &self,
-        mut entity_commands: EntityCommands,
-        font: Handle<Font>,
-        location: Vec2,
-    ) -> Entity {
-        info!("Rendering tile at {}", location);
-        match self {
-            TileAppearance::Ascii(character) => entity_commands
-                .insert(Text2dBundle {
-                    text: Text::from_section(
-                        *character,
-                        TextStyle {
-                            font: font.clone(),
-                            font_size: ASCII_TILE_FONT_SIZE,
-                            color: Color::BLUE,
-                        },
-                    ),
-                    transform: Transform::from_translation(location.extend(0.)),
-                    ..Default::default()
-                })
-                .id(),
-            TileAppearance::Sprite(_) => panic!("Not implemented yet."),
-        }
-    }
-}
-
 // End Helper Structs
 
 // Helper Functions
 
-fn to_screen_coordinates(location: TileLocation) -> Vec2 {
-    Vec2::new(
-        (location.i * (TILE_WIDTH as i32)) as f32,
-        (location.j * (TILE_HEIGHT as i32)) as f32,
-    )
-}
 // End Helper Functions
