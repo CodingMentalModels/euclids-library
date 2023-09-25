@@ -94,7 +94,7 @@ impl TileGrid {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TileAppearance {
-    Ascii(char),
+    Ascii(AsciiTileAppearance),
     Sprite(Handle<TextureAtlas>),
 }
 
@@ -105,8 +105,11 @@ impl TileAppearance {
                 panic!("Not implemented yet.");
             }
             None => match tile.get_surface() {
-                SurfaceTile::Ground => TileAppearance::Ascii(MIDDLE_DOT),
-                SurfaceTile::Wall => TileAppearance::Ascii('#'),
+                SurfaceTile::Ground => TileAppearance::Ascii(MIDDLE_DOT.into()),
+                SurfaceTile::Wall => TileAppearance::Ascii('#'.into()),
+                SurfaceTile::Fireplace => {
+                    TileAppearance::Ascii(AsciiTileAppearance::new('X', ColorCode::Red))
+                }
             },
         }
     }
@@ -119,14 +122,14 @@ impl TileAppearance {
     ) -> Entity {
         info!("Rendering tile at {}", location);
         match self {
-            TileAppearance::Ascii(character) => entity_commands
+            TileAppearance::Ascii(appearance) => entity_commands
                 .insert(Text2dBundle {
                     text: Text::from_section(
-                        *character,
+                        appearance.character,
                         TextStyle {
                             font: font.clone(),
                             font_size: ASCII_TILE_FONT_SIZE,
-                            color: Color::BLUE,
+                            color: appearance.color_code.to_color(),
                         },
                     ),
                     transform: Transform::from_translation(location.extend(0.)),
@@ -134,6 +137,46 @@ impl TileAppearance {
                 })
                 .id(),
             TileAppearance::Sprite(_) => panic!("Not implemented yet."),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AsciiTileAppearance {
+    character: char,
+    color_code: ColorCode,
+}
+
+impl From<char> for AsciiTileAppearance {
+    fn from(value: char) -> Self {
+        Self::character(value)
+    }
+}
+
+impl AsciiTileAppearance {
+    pub fn new(character: char, color: ColorCode) -> Self {
+        Self {
+            character,
+            color_code: color,
+        }
+    }
+
+    pub fn character(character: char) -> Self {
+        Self::new(character, ColorCode::AntiqueWhite)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ColorCode {
+    AntiqueWhite,
+    Red,
+}
+
+impl ColorCode {
+    pub fn to_color(&self) -> Color {
+        match self {
+            Self::AntiqueWhite => Color::ANTIQUE_WHITE,
+            Self::Red => Color::RED,
         }
     }
 }

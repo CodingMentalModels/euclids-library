@@ -140,6 +140,10 @@ impl Tile {
         Self::empty(SurfaceTile::Wall)
     }
 
+    pub fn object(object: ObjectTile) -> Self {
+        Self::new(SurfaceTile::Ground, vec![object])
+    }
+
     pub fn get_surface(&self) -> SurfaceTile {
         self.surface
     }
@@ -157,6 +161,7 @@ impl Tile {
 pub enum SurfaceTile {
     Ground,
     Wall,
+    Fireplace,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]

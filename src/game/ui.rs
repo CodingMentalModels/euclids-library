@@ -13,7 +13,7 @@ use crate::game::resources::*;
 use super::events::CameraZoomEvent;
 use super::map::{MapLayer, SurfaceTile, Tile, TileLocation};
 use super::player::{LocationComponent, PlayerComponent};
-use super::ui_state::{TileAppearance, TileGrid};
+use super::ui_state::{AsciiTileAppearance, TileAppearance, TileGrid};
 
 pub struct UIPlugin;
 
@@ -78,7 +78,7 @@ fn load_map(
     let tile_grid = TileGrid::from_map_layer(map_layer);
     tile_grid.render(&mut commands, font.0.clone());
 
-    let player_tile = TileAppearance::Ascii('@');
+    let player_tile = TileAppearance::Ascii(AsciiTileAppearance::from('@'));
     let player_sprite = player_tile.render(
         &mut commands
             .get_entity(player_entity)
