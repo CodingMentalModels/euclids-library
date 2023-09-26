@@ -180,7 +180,7 @@ impl SurfaceTile {
                 ParticleLocation::Exact(TileLocation::zero()),
                 ParticleMovement::new(
                     ParticleTiming::Every(ParticleDuration::Exponential(Duration::from_millis(
-                        100,
+                        500,
                     ))),
                     ParticleDirection::Constant(Direction::Up),
                 ),

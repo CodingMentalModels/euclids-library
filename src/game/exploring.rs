@@ -74,15 +74,19 @@ fn move_camera_system(
 
 fn emit_particles_system(
     mut commands: Commands,
-    mut emitter_query: Query<&mut ParticleEmitterComponent>,
+    mut emitter_query: Query<(&mut ParticleEmitterComponent, &Transform)>,
     time: Res<Time>,
     font: Res<LoadedFont>,
 ) {
-    for mut emitter in emitter_query.iter_mut() {
+    for (mut emitter, transform) in emitter_query.iter_mut() {
         emitter.timer.tick(time.delta());
 
         if emitter.timer.just_finished() {
-            emitter.emit(&mut commands, font.0.clone());
+            emitter.emit(
+                &mut commands,
+                font.0.clone(),
+                transform.translation.truncate(),
+            );
             match &emitter.spec.emission_timing {
                 ParticleTiming::Once(_) => { // Do nothing
                 }

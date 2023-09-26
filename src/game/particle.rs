@@ -23,19 +23,17 @@ impl ParticleEmitterComponent {
         Self { spec, timer }
     }
 
-    pub fn emit(&self, commands: &mut Commands, font: Handle<Font>) -> Entity {
+    pub fn emit(&self, commands: &mut Commands, font: Handle<Font>, origin: Vec2) -> Entity {
         let movement = self.spec.movement.clone();
         let appearance = self.spec.appearance.clone();
         let timer = movement.get_timer();
 
         let initial_appearance = appearance.get_appearance();
-        let location = self.spec.emission_location.get_location();
+        let location = self.spec.emission_location.get_relative_location();
 
-        let entity = initial_appearance.render(
-            &mut commands.spawn_empty(),
-            font.clone(),
-            TileGrid::tile_to_world_coordinates(location),
-        );
+        let position = origin + TileGrid::tile_to_world_coordinates(location);
+        let entity = initial_appearance.render(&mut commands.spawn_empty(), font.clone(), position);
+        info!("Emmitted to {}", position);
 
         commands
             .entity(entity)
@@ -146,10 +144,12 @@ impl ParticleDuration {
             Self::Exponential(duration) => {
                 let mut rng = thread_rng();
 
-                let lambda = duration.as_nanos() as f32;
+                let lambda = 1. / (duration.as_millis() as f32);
+                info!("lambda: {}", lambda);
                 let exp = Exp::new(lambda).unwrap();
                 let v: f32 = exp.sample(&mut rng);
-                Timer::new(Duration::new(0, v.round() as u32), TimerMode::Once)
+                info!("exponential: {}", v);
+                Timer::new(Duration::from_millis(v.round() as u64), TimerMode::Once)
             }
         }
     }
@@ -161,7 +161,7 @@ pub enum ParticleLocation {
 }
 
 impl ParticleLocation {
-    pub fn get_location(&self) -> TileLocation {
+    pub fn get_relative_location(&self) -> TileLocation {
         match self {
             Self::Exact(location) => *location,
         }
