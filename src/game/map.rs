@@ -179,16 +179,14 @@ impl SurfaceTile {
                 ParticleTiming::Every(ParticleDuration::Exact(Duration::from_millis(500))),
                 ParticleLocation::Exact(Direction::Up.as_tile_location()),
                 ParticleMovement::new(
-                    ParticleTiming::Every(ParticleDuration::Exponential(Duration::from_millis(
-                        500,
-                    ))),
+                    ParticleTiming::Every(ParticleDuration::Exact(Duration::from_millis(500))),
                     ParticleDirection::Weighted(vec![
-                        (Direction::Up, 6),
-                        (Direction::Left, 1),
-                        (Direction::Right, 1),
+                        (Direction::Up, 2),
+                        (Direction::UpLeft, 1),
+                        (Direction::UpRight, 1),
                     ]),
                 ),
-                ParticleAppearance::Constant(AsciiTileAppearance::new('*', ColorCode::Gray)),
+                ParticleAppearance::Constant(AsciiTileAppearance::new('S', ColorCode::Gray)),
             )),
             _ => None,
         }
