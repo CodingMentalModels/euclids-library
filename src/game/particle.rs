@@ -1,7 +1,9 @@
 use bevy::prelude::*;
 use bevy::utils::Duration;
+use rand::distributions::{Distribution, WeightedIndex};
 use rand::prelude::*;
-use rand_distr::{Distribution, Exp};
+use rand::Rng;
+use rand_distr::Exp;
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -197,9 +199,12 @@ pub enum ParticleDirection {
 impl ParticleDirection {
     pub fn get_translation(&self) -> Vec2 {
         let direction = match self {
-            Self::Constant(direction) => direction,
+            Self::Constant(direction) => *direction,
             Self::Weighted(directions_and_weights) => {
-                panic!("Unimplemented.");
+                let dist =
+                    WeightedIndex::new(directions_and_weights.iter().map(|(_, w)| *w)).unwrap();
+                let dir_idx = rand::thread_rng().sample(&dist);
+                directions_and_weights[dir_idx].0.clone()
             }
         };
         TileGrid::tile_to_world_coordinates(direction.as_tile_location())
