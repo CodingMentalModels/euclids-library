@@ -1,13 +1,14 @@
 use std::ops::{Add, AddAssign};
 
 use bevy::prelude::*;
+use bevy::utils::Duration;
 use serde::{Deserialize, Serialize};
 
 use super::{
     events::Direction,
     particle::{
-        ParticleAppearance, ParticleDuration, ParticleLocation, ParticleMovement, ParticleSpec,
-        ParticleTiming,
+        ParticleAppearance, ParticleDirection, ParticleDuration, ParticleLocation,
+        ParticleMovement, ParticleSpec, ParticleTiming,
     },
     ui_state::{AsciiTileAppearance, ColorCode},
 };
@@ -175,9 +176,14 @@ impl SurfaceTile {
     pub fn get_particle_spec(&self) -> Option<ParticleSpec> {
         match self {
             Self::Fireplace => Some(ParticleSpec::new(
-                ParticleTiming::Every(ParticleDuration::Exact(500)),
+                ParticleTiming::Every(ParticleDuration::Exact(Duration::from_millis(500))),
                 ParticleLocation::Exact(TileLocation::zero()),
-                ParticleMovement::Constant(Direction::Up),
+                ParticleMovement::new(
+                    ParticleTiming::Every(ParticleDuration::Exponential(Duration::from_millis(
+                        100,
+                    ))),
+                    ParticleDirection::Constant(Direction::Up),
+                ),
                 ParticleAppearance::Constant(AsciiTileAppearance::new('*', ColorCode::Gray)),
             )),
             _ => None,

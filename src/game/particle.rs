@@ -13,19 +13,66 @@ use super::{
 // Components
 
 #[derive(Component, Clone)]
-pub struct ParticleEmitterComponent(ParticleSpec, Timer);
+pub struct ParticleEmitterComponent {
+    pub spec: ParticleSpec,
+    pub timer: Timer,
+}
+
+impl ParticleEmitterComponent {
+    pub fn new(spec: ParticleSpec, timer: Timer) -> Self {
+        Self { spec, timer }
+    }
+
+    pub fn emit(&self, commands: &mut Commands, font: Handle<Font>) -> Entity {
+        let movement = self.spec.movement.clone();
+        let appearance = self.spec.appearance.clone();
+        let timer = movement.get_timer();
+
+        let initial_appearance = appearance.get_appearance();
+        let location = self.spec.emission_location.get_location();
+
+        let entity = initial_appearance.render(
+            &mut commands.spawn_empty(),
+            font.clone(),
+            TileGrid::tile_to_world_coordinates(location),
+        );
+
+        commands
+            .entity(entity)
+            .insert(ParticleComponent::new(movement, appearance, timer))
+            .id()
+    }
+}
 
 #[derive(Component, Clone)]
-pub struct ParticleComponent(ParticleMovement, ParticleAppearance, Timer);
+pub struct ParticleComponent {
+    pub particle_movement: ParticleMovement,
+    pub particle_appearance: ParticleAppearance,
+    pub timer: Timer,
+}
+
+impl ParticleComponent {
+    pub fn new(
+        particle_movement: ParticleMovement,
+        particle_appearance: ParticleAppearance,
+        timer: Timer,
+    ) -> Self {
+        Self {
+            particle_movement,
+            particle_appearance,
+            timer,
+        }
+    }
+}
 
 // End Components
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ParticleSpec {
-    emission_timing: ParticleTiming,
-    emission_location: ParticleLocation,
-    movement: ParticleMovement,
-    appearance: ParticleAppearance,
+    pub emission_timing: ParticleTiming,
+    pub emission_location: ParticleLocation,
+    pub movement: ParticleMovement,
+    pub appearance: ParticleAppearance,
 }
 
 impl ParticleSpec {
@@ -59,7 +106,7 @@ impl ParticleSpec {
         );
         commands
             .entity(entity)
-            .insert(ParticleEmitterComponent(
+            .insert(ParticleEmitterComponent::new(
                 self.clone(),
                 self.emission_timing.get_timer(),
             ))
@@ -80,8 +127,8 @@ impl ParticleTiming {
 
     fn get_duration(&self) -> ParticleDuration {
         match self {
-            Self::Once(d) => *d,
-            Self::Every(d) => *d,
+            Self::Once(d) => d.clone(),
+            Self::Every(d) => d.clone(),
         }
     }
 }
@@ -102,7 +149,7 @@ impl ParticleDuration {
                 let lambda = duration.as_nanos() as f32;
                 let exp = Exp::new(lambda).unwrap();
                 let v: f32 = exp.sample(&mut rng);
-                Timer::new(Duration::new(0, v), TimerMode::Once)
+                Timer::new(Duration::new(0, v.round() as u32), TimerMode::Once)
             }
         }
     }
@@ -113,10 +160,32 @@ pub enum ParticleLocation {
     Exact(TileLocation),
 }
 
+impl ParticleLocation {
+    pub fn get_location(&self) -> TileLocation {
+        match self {
+            Self::Exact(location) => *location,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ParticleMovement {
-    timing: ParticleTiming,
-    direction: ParticleDirection,
+    pub timing: ParticleTiming,
+    pub direction: ParticleDirection,
+}
+
+impl ParticleMovement {
+    pub fn new(timing: ParticleTiming, direction: ParticleDirection) -> Self {
+        Self { timing, direction }
+    }
+
+    pub fn get_timer(&self) -> Timer {
+        self.timing.get_timer()
+    }
+
+    pub fn get_translation(&self) -> Vec2 {
+        self.direction.get_translation()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -124,7 +193,28 @@ pub enum ParticleDirection {
     Constant(Direction),
     Weighted(Vec<(Direction, u32)>),
 }
+
+impl ParticleDirection {
+    pub fn get_translation(&self) -> Vec2 {
+        let direction = match self {
+            Self::Constant(direction) => direction,
+            Self::Weighted(directions_and_weights) => {
+                panic!("Unimplemented.");
+            }
+        };
+        TileGrid::tile_to_world_coordinates(direction.as_tile_location())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ParticleAppearance {
     Constant(AsciiTileAppearance),
+}
+
+impl ParticleAppearance {
+    pub fn get_appearance(&self) -> TileAppearance {
+        match self {
+            Self::Constant(appearance) => TileAppearance::Ascii(appearance.clone()),
+        }
+    }
 }

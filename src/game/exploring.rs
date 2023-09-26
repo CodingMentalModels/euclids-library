@@ -4,8 +4,9 @@ use super::{
     constants::*,
     events::{CameraMovementEvent, MovementEvent},
     map::{MapLayer, SurfaceTile, Tile},
+    particle::{ParticleComponent, ParticleEmitterComponent, ParticleTiming},
     player::{LocationComponent, PlayerComponent},
-    resources::{GameState, LoadedMap},
+    resources::{GameState, LoadedFont, LoadedMap},
 };
 
 pub struct ExploringPlugin;
@@ -20,13 +21,21 @@ impl Plugin for ExploringPlugin {
             .add_systems(
                 Update,
                 move_camera_system.run_if(in_state(GameState::Exploring)),
+            )
+            .add_systems(
+                Update,
+                emit_particles_system.run_if(in_state(GameState::Exploring)),
+            )
+            .add_systems(
+                Update,
+                update_particles_system.run_if(in_state(GameState::Exploring)),
             );
     }
 }
 
 // Systems
 
-pub fn load_map_system(mut commands: Commands) {
+fn load_map_system(mut commands: Commands) {
     let mut map_layer = MapLayer::fill(
         DEFAULT_MAP_WIDTH_IN_TILES,
         DEFAULT_MAP_HEIGHT_IN_TILES,
@@ -41,7 +50,7 @@ pub fn load_map_system(mut commands: Commands) {
     commands.insert_resource(NextState(Some(GameState::Exploring)));
 }
 
-pub fn move_player_system(
+fn move_player_system(
     mut movement_event_reader: EventReader<MovementEvent>,
     mut player_query: Query<&mut LocationComponent, With<PlayerComponent>>,
 ) {
@@ -52,7 +61,7 @@ pub fn move_player_system(
     }
 }
 
-pub fn move_camera_system(
+fn move_camera_system(
     mut camera_movement_event_reader: EventReader<CameraMovementEvent>,
     mut query: Query<&mut Transform, With<Camera2d>>,
 ) {
@@ -60,6 +69,52 @@ pub fn move_camera_system(
     for event in camera_movement_event_reader.iter() {
         transform.translation += event.0.as_vector().extend(0.) * CAMERA_MOVE_SPEED;
         info!("New transform: {:?}", transform.translation);
+    }
+}
+
+fn emit_particles_system(
+    mut commands: Commands,
+    mut emitter_query: Query<&mut ParticleEmitterComponent>,
+    time: Res<Time>,
+    font: Res<LoadedFont>,
+) {
+    for mut emitter in emitter_query.iter_mut() {
+        emitter.timer.tick(time.delta());
+
+        if emitter.timer.just_finished() {
+            emitter.emit(&mut commands, font.0.clone());
+            match &emitter.spec.emission_timing {
+                ParticleTiming::Once(_) => { // Do nothing
+                }
+                ParticleTiming::Every(duration) => {
+                    emitter.timer = duration.get_timer();
+                }
+            }
+        }
+    }
+}
+
+fn update_particles_system(
+    mut particles_query: Query<(&mut ParticleComponent, &mut Transform)>,
+    time: Res<Time>,
+    font: Res<LoadedFont>,
+) {
+    for (mut particle, mut transform) in particles_query.iter_mut() {
+        particle.timer.tick(time.delta());
+        if particle.timer.just_finished() {
+            match &particle.particle_movement.timing {
+                ParticleTiming::Once(_) => {
+                    // Do nothing
+                }
+                ParticleTiming::Every(duration) => {
+                    particle.timer = duration.get_timer();
+                }
+            }
+
+            transform.translation += particle.particle_movement.get_translation().extend(0.);
+
+            // TODO Handle Appearance
+        }
     }
 }
 
