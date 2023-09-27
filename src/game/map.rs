@@ -1,9 +1,17 @@
 use std::ops::{Add, AddAssign};
 
 use bevy::prelude::*;
+use bevy::utils::Duration;
 use serde::{Deserialize, Serialize};
 
-use super::events::Direction;
+use super::{
+    events::Direction,
+    particle::{
+        ParticleAppearance, ParticleDirection, ParticleDuration, ParticleLocation,
+        ParticleMovement, ParticleSpec, ParticleTiming,
+    },
+    ui_state::{AsciiTileAppearance, ColorCode},
+};
 
 #[derive(Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct Map(Vec<MapLayer>);
@@ -28,7 +36,7 @@ impl From<MapLayer> for Map {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct MapLayer(Vec<Vec<Tile>>);
 
 impl MapLayer {
@@ -38,6 +46,10 @@ impl MapLayer {
             assert!(tiles.iter().all(|column| column.len() == height));
         }
         Self(tiles)
+    }
+
+    pub fn get_tiles_cloned(&self) -> Vec<Vec<Tile>> {
+        self.0.clone()
     }
 
     pub fn fill(width: usize, height: usize, tile: Tile) -> Self {
@@ -136,6 +148,10 @@ impl Tile {
         Self::empty(SurfaceTile::Wall)
     }
 
+    pub fn object(object: ObjectTile) -> Self {
+        Self::new(SurfaceTile::Ground, vec![object])
+    }
+
     pub fn get_surface(&self) -> SurfaceTile {
         self.surface
     }
@@ -153,6 +169,28 @@ impl Tile {
 pub enum SurfaceTile {
     Ground,
     Wall,
+    Fireplace,
+}
+
+impl SurfaceTile {
+    pub fn get_particle_spec(&self) -> Option<ParticleSpec> {
+        match self {
+            Self::Fireplace => Some(ParticleSpec::new(
+                ParticleTiming::Every(ParticleDuration::Exact(Duration::from_millis(500))),
+                ParticleLocation::Exact(Direction::Up.as_tile_location()),
+                ParticleMovement::new(
+                    ParticleTiming::Every(ParticleDuration::Exact(Duration::from_millis(500))),
+                    ParticleDirection::Weighted(vec![
+                        (Direction::Up, 2),
+                        (Direction::UpLeft, 1),
+                        (Direction::UpRight, 1),
+                    ]),
+                ),
+                ParticleAppearance::Constant(AsciiTileAppearance::new('S', ColorCode::Gray)),
+            )),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
