@@ -128,7 +128,7 @@ fn update_particles_system(
 
 fn despawn_particles_offscreen_system(
     mut commands: Commands,
-    camera_transform: Query<&Transform, With<OrthographicProjection>>,
+    camera_query: Query<(&Transform, &OrthographicProjection)>,
     particle_query: Query<(Entity, &Transform), With<ParticleComponent>>,
     window_query: Query<&Window>,
 ) {
@@ -137,12 +137,12 @@ fn despawn_particles_offscreen_system(
     let window_width = window.width() / 2.0;
     let window_height = window.height() / 2.0;
 
-    // Assuming there's one main camera for simplicity.
-    let camera_transform = camera_transform.single();
+    // Assumes there's only one camera
+    let (camera_transform, projection) = camera_query.single();
 
     // Get the scale of the camera.
-    // If you're using non-uniform scaling, you'd handle each axis individually.
-    let camera_scale = camera_transform.scale.x;
+    let camera_scale = projection.scale;
+    info!("camera scale: {}", camera_scale);
 
     // Adjust window dimensions based on camera scale.
     let adjusted_width = window_width * camera_scale;
