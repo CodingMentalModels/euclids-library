@@ -29,6 +29,10 @@ impl Plugin for ExploringPlugin {
             .add_systems(
                 Update,
                 update_particles_system.run_if(in_state(GameState::Exploring)),
+            )
+            .add_systems(
+                Update,
+                despawn_particles_offscreen_system.run_if(in_state(GameState::Exploring)),
             );
     }
 }
@@ -118,6 +122,44 @@ fn update_particles_system(
             transform.translation += particle.particle_movement.get_translation().extend(0.);
 
             // TODO Handle Appearance
+        }
+    }
+}
+
+fn despawn_particles_offscreen_system(
+    mut commands: Commands,
+    camera_transform: Query<&Transform, With<OrthographicProjection>>,
+    particle_query: Query<(Entity, &Transform), With<ParticleComponent>>,
+    window_query: Query<&Window>,
+) {
+    // Get the main window (screen) dimensions.
+    let window = window_query.single();
+    let window_width = window.width() / 2.0;
+    let window_height = window.height() / 2.0;
+
+    // Assuming there's one main camera for simplicity.
+    let camera_transform = camera_transform.single();
+
+    // Get the scale of the camera.
+    // If you're using non-uniform scaling, you'd handle each axis individually.
+    let camera_scale = camera_transform.scale.x;
+
+    // Adjust window dimensions based on camera scale.
+    let adjusted_width = window_width * camera_scale;
+    let adjusted_height = window_height * camera_scale;
+
+    for (entity, transform) in particle_query.iter() {
+        // Calculate the entity's position relative to the camera.
+        let position_relative = transform.translation - camera_transform.translation;
+
+        // Check if the entity is offscreen, accounting for the camera's scale.
+        if position_relative.x < -adjusted_width
+            || position_relative.x > adjusted_width
+            || position_relative.y < -adjusted_height
+            || position_relative.y > adjusted_height
+        {
+            info!("Despawning particle");
+            commands.entity(entity).despawn_recursive();
         }
     }
 }
