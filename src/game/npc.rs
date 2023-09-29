@@ -13,9 +13,9 @@ use super::{
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct NPC {
-    name: String,
-    location: MapLocation,
-    dialog: Dialog,
+    pub name: String,
+    pub location: MapLocation,
+    pub dialog: Dialog,
 }
 
 impl NPC {
