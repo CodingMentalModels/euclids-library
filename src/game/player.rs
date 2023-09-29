@@ -42,6 +42,11 @@ impl Player {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Damage {
+    Piercing(u32),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BodyPartTreeNode {
     body_part: BodyPart,
     children: Box<Vec<BodyPartTreeNode>>,
