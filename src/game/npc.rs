@@ -9,6 +9,9 @@ use super::{
 
 // Components
 
+#[derive(Component, Clone, Copy)]
+pub struct NPCComponent;
+
 // End Components
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -27,8 +30,9 @@ impl NPC {
         }
     }
 
-    pub fn spawn(&self, entity_commands: &mut EntityCommands, font: Handle<Font>) -> Entity {
+    pub fn spawn(&self, entity_commands: &mut EntityCommands) -> Entity {
         entity_commands
+            .insert(NPCComponent)
             .insert(LocationComponent(self.location))
             .insert(DialogComponent(self.dialog.clone()))
             .id()

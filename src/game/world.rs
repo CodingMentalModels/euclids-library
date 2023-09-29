@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use super::{
     map::{MapLocation, TileLocation},
     player::Player,
-    resources::GameState,
+    resources::{GameState, LoadedFont, NPCSpecs},
 };
 
 pub struct WorldPlugin;
@@ -13,6 +13,10 @@ impl Plugin for WorldPlugin {
         app.add_systems(
             OnEnter(GameState::InitializingWorld),
             initialize_player_system,
+        )
+        .add_systems(
+            OnEnter(GameState::InitializingWorld),
+            initialize_npcs_system,
         );
     }
 }
@@ -27,6 +31,12 @@ fn initialize_player_system(mut commands: Commands) {
     player.spawn(&mut commands);
 
     commands.insert_resource(NextState(Some(GameState::LoadingMap)));
+}
+
+fn initialize_npcs_system(mut commands: Commands, npc_specs: Res<NPCSpecs>) {
+    for (name, npc) in npc_specs.0.as_vec().into_iter() {
+        npc.spawn(&mut commands.spawn_empty());
+    }
 }
 
 // End Systems

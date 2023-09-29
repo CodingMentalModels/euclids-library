@@ -41,7 +41,7 @@ fn generate_example_specs_system() {
         Path::new(NPC_DIRECTORY).join("example_npc.json"),
         npc_string,
     )
-    .expect("Error writing enemy spec");
+    .expect("Error writing npc spec");
 }
 
 fn load_assets_system(mut commands: Commands) {
@@ -52,7 +52,7 @@ fn load_assets_system(mut commands: Commands) {
         .collect::<Result<Vec<NPC>, _>>()
         .expect("Error parsing npcs.");
 
-    commands.insert_resource(SpecLookup::from_vec(npcs, |npc| npc.name.clone()));
+    commands.insert_resource(NPCSpecs::from_vec(npcs));
     commands.insert_resource(NextState(Some(GameState::LoadingUI)));
 }
 
@@ -69,7 +69,7 @@ fn read_files_from_directory(directory: &Path) -> Vec<String> {
                 match subpath_result {
                     Ok(dir_entry) => {
                         let subpath = dir_entry.path();
-                        if (subpath.is_file()) {
+                        if subpath.is_file() {
                             let contents_result = fs::read_to_string(subpath);
                             match contents_result {
                                 Ok(contents) => {

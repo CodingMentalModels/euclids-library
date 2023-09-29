@@ -12,6 +12,7 @@ use crate::game::resources::*;
 
 use super::events::CameraZoomEvent;
 use super::map::{MapLayer, SurfaceTile, Tile, TileLocation};
+use super::npc::NPCComponent;
 use super::player::{LocationComponent, PlayerComponent};
 use super::ui_state::{AsciiTileAppearance, TileAppearance, TileGrid};
 
@@ -64,6 +65,7 @@ fn ui_load_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 fn load_map(
     mut commands: Commands,
     player_query: Query<(Entity, &LocationComponent), With<PlayerComponent>>,
+    npc_query: Query<(Entity, &LocationComponent), With<NPCComponent>>,
     map: Res<LoadedMap>,
     font: Res<LoadedFont>,
 ) {
@@ -95,6 +97,17 @@ fn load_map(
         TileGrid::tile_to_world_coordinates(player_location.0.get_tile_location()),
     );
     commands.entity(player_sprite).insert(PlayerSprite);
+
+    for (entity, location) in npc_query.iter() {
+        let npc_tile = TileAppearance::Ascii('&'.into());
+        let npc_sprite = npc_tile.render(
+            &mut commands
+                .get_entity(entity)
+                .expect("NPC Entity must exist if it was returned from the query."),
+            font.0.clone(),
+            TileGrid::tile_to_world_coordinates(location.0.get_tile_location()),
+        );
+    }
 }
 
 fn update_positions(mut query: Query<(&LocationComponent, &mut Transform)>) {

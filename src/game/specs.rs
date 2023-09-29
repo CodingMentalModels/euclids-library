@@ -27,4 +27,8 @@ impl<T: Clone + PartialEq + Eq> SpecLookup<T> {
     pub fn get_names(&self) -> HashSet<&String> {
         self.0.keys().collect()
     }
+
+    pub fn as_vec(&self) -> Vec<(String, T)> {
+        self.0.clone().into_iter().collect()
+    }
 }
