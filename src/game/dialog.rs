@@ -1,6 +1,13 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
+// Components
+
+#[derive(Component, Clone)]
+pub struct DialogComponent(pub Dialog);
+
+// End Components
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Dialog {
     NPCDialog(Box<NPCDialog>),
