@@ -1,10 +1,6 @@
-use bevy::ecs::system::EntityCommands;
-use bevy::render::camera::CameraProjection;
-use bevy::window::PrimaryWindow;
 use bevy::{asset::LoadState, prelude::*};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use bevy_mod_raycast::RaycastSource;
-use egui::{RichText, Ui};
 
 use crate::game::constants::*;
 use crate::game::input::MouseoverRaycastSet;
@@ -12,7 +8,6 @@ use crate::game::resources::*;
 
 use super::events::CameraZoomEvent;
 use super::interacting::{Interactable, InteractingState};
-use super::map::{MapLayer, SurfaceTile, Tile, TileLocation};
 use super::npc::NPCComponent;
 use super::player::{LocationComponent, PlayerComponent};
 use super::ui_state::{
@@ -37,7 +32,11 @@ impl Plugin for UIPlugin {
             )
             .add_systems(
                 Update,
-                render_interacting.run_if(in_state(GameState::Interacting)),
+                render_exploring_ui.run_if(in_state(GameState::Exploring)),
+            )
+            .add_systems(
+                Update,
+                render_interacting_ui.run_if(in_state(GameState::Interacting)),
             );
 
         app.insert_resource(MaterialCache::empty());
@@ -74,12 +73,10 @@ fn ui_load_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 fn load_map(
     mut commands: Commands,
     player_query: Query<(Entity, &LocationComponent), With<PlayerComponent>>,
-    npc_query: Query<(Entity, &LocationComponent), With<NPCComponent>>,
     map: Res<LoadedMap>,
     font: Res<LoadedFont>,
 ) {
-    let (player_entity, player_location) = player_query.single();
-
+    let (_player_entity, player_location) = player_query.single();
     let map_layer = map
         .0
         .get_layer(player_location.0.get_map_layer())
@@ -89,37 +86,8 @@ fn load_map(
     commands.insert_resource(ExploringUIState {
         tile_grid: tile_grid.clone(),
     });
+
     tile_grid.render(&mut commands, font.0.clone());
-
-    map_layer
-        .as_location_and_tile_vector()
-        .into_iter()
-        .for_each(|(location, tile)| {
-            if let Some(particle_spec) = tile.get_surface().get_particle_spec() {
-                particle_spec.render(&mut commands, font.0.clone(), location);
-            };
-        });
-
-    let player_tile = TileAppearance::Ascii(AsciiTileAppearance::from('@'));
-    let player_sprite = player_tile.render(
-        &mut commands
-            .get_entity(player_entity)
-            .expect("Player entity must exist if it was returned from the query."),
-        font.0.clone(),
-        TileGrid::tile_to_world_coordinates(player_location.0.get_tile_location()),
-    );
-    commands.entity(player_sprite).insert(PlayerSprite);
-
-    for (entity, location) in npc_query.iter() {
-        let npc_tile = TileAppearance::Ascii('&'.into());
-        let _npc_sprite = npc_tile.render(
-            &mut commands
-                .get_entity(entity)
-                .expect("NPC Entity must exist if it was returned from the query."),
-            font.0.clone(),
-            TileGrid::tile_to_world_coordinates(location.0.get_tile_location()),
-        );
-    }
 }
 
 fn update_positions(mut query: Query<(&LocationComponent, &mut Transform)>) {
@@ -145,7 +113,38 @@ fn update_camera_zoom(
     }
 }
 
-fn render_interacting(ui_state: Res<InteractingUIState>) {
+fn render_exploring_ui(
+    mut commands: Commands,
+    ui_state: Res<ExploringUIState>,
+    player_query: Query<(Entity, &LocationComponent), With<PlayerComponent>>,
+    npc_query: Query<(Entity, &LocationComponent), With<NPCComponent>>,
+    font: Res<LoadedFont>,
+) {
+    let (player_entity, player_location) = player_query.single();
+
+    let player_tile = TileAppearance::Ascii(AsciiTileAppearance::from('@'));
+    let player_sprite = player_tile.render(
+        &mut commands
+            .get_entity(player_entity)
+            .expect("Player entity must exist if it was returned from the query."),
+        font.0.clone(),
+        TileGrid::tile_to_world_coordinates(player_location.0.get_tile_location()),
+    );
+    commands.entity(player_sprite).insert(PlayerSprite);
+
+    for (entity, location) in npc_query.iter() {
+        let npc_tile = TileAppearance::Ascii('&'.into());
+        let _npc_sprite = npc_tile.render(
+            &mut commands
+                .get_entity(entity)
+                .expect("NPC Entity must exist if it was returned from the query."),
+            font.0.clone(),
+            TileGrid::tile_to_world_coordinates(location.0.get_tile_location()),
+        );
+    }
+}
+
+fn render_interacting_ui(ui_state: Res<InteractingUIState>) {
     match &ui_state.interacting_state {
         InteractingState::ChoosingDirection => {
             info!("Choose a direction.");
