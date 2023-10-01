@@ -53,6 +53,7 @@ fn setup_interacting_system(mut commands: Commands, exploring_ui_state: Res<Expl
 }
 
 fn handle_direction_choice_system(
+    mut commands: Commands,
     mut state: ResMut<InteractingState>,
     mut reader: EventReader<ChooseDirectionEvent>,
     player_query: Query<&LocationComponent, With<PlayerComponent>>,
@@ -73,6 +74,7 @@ fn handle_direction_choice_system(
                 {
                     None => {
                         info!("Nothing to interact with.");
+                        commands.insert_resource(NextState(Some(GameState::Exploring)));
                     }
                     Some((_location, interaction)) => {
                         *state = InteractingState::Interacting(interaction.0.clone());

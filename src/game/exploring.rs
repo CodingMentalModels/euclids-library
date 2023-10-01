@@ -142,7 +142,6 @@ fn despawn_particles_offscreen_system(
 
     // Get the scale of the camera.
     let camera_scale = projection.scale;
-    info!("camera scale: {}", camera_scale);
 
     // Adjust window dimensions based on camera scale.
     let adjusted_width = window_width * camera_scale;
