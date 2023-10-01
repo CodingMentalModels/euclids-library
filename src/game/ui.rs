@@ -39,6 +39,8 @@ impl Plugin for UIPlugin {
                 Update,
                 render_interacting.run_if(in_state(GameState::Interacting)),
             );
+
+        app.insert_resource(MaterialCache::empty());
     }
 }
 

@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use bevy::prelude::*;
 use rand::rngs::ThreadRng;
 
@@ -29,6 +31,22 @@ pub struct LoadedFont(pub Handle<Font>);
 #[derive(Debug, PartialEq, Eq, Hash, Resource)]
 pub struct LoadedMap(pub Map);
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Resource)]
+pub struct MaterialCache(pub BTreeMap<u32, Handle<ColorMaterial>>);
+
+impl MaterialCache {
+    pub fn empty() -> Self {
+        Self(BTreeMap::new())
+    }
+
+    pub fn insert(&mut self, color: &Color, handle: Handle<ColorMaterial>) {
+        self.0.insert(color.as_rgba_u32(), handle);
+    }
+
+    pub fn get(&self, color: &Color) -> Option<Handle<ColorMaterial>> {
+        self.0.get(&color.as_rgba_u32()).cloned()
+    }
+}
 // Specs
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Resource)]
