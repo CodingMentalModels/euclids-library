@@ -242,7 +242,7 @@ impl MapLocation {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct TileLocation {
     pub i: i32,
     pub j: i32,

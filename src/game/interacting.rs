@@ -47,9 +47,9 @@ pub struct InteractableComponent(pub Interactable);
 
 // Systems
 
-fn setup_interacting_system(mut commands: Commands, exploring_ui_state: Res<ExploringUIState>) {
+fn setup_interacting_system(mut commands: Commands) {
     commands.insert_resource(InteractingState::default());
-    commands.insert_resource(InteractingUIState::from(exploring_ui_state.clone()));
+    commands.insert_resource(InteractingUIState::default());
 }
 
 fn handle_direction_choice_system(
