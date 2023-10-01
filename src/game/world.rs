@@ -34,7 +34,7 @@ fn initialize_player_system(mut commands: Commands) {
 }
 
 fn initialize_npcs_system(mut commands: Commands, npc_specs: Res<NPCSpecs>) {
-    for (name, npc) in npc_specs.0.as_vec().into_iter() {
+    for (_name, npc) in npc_specs.0.as_vec().into_iter() {
         npc.spawn(&mut commands.spawn_empty());
     }
 }

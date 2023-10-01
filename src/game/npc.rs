@@ -2,7 +2,8 @@ use bevy::{ecs::system::EntityCommands, prelude::*};
 use serde::{Deserialize, Serialize};
 
 use super::{
-    dialog::{Dialog, DialogComponent},
+    dialog::Dialog,
+    interacting::{Interactable, InteractableComponent},
     map::MapLocation,
     player::LocationComponent,
 };
@@ -34,7 +35,9 @@ impl NPC {
         entity_commands
             .insert(NPCComponent)
             .insert(LocationComponent(self.location))
-            .insert(DialogComponent(self.dialog.clone()))
+            .insert(InteractableComponent(Interactable::Dialog(
+                self.dialog.clone(),
+            )))
             .id()
     }
 }

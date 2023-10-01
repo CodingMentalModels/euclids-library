@@ -3,7 +3,9 @@ use bevy_mod_raycast::{
     print_intersections, DefaultRaycastingPlugin, RaycastMethod, RaycastSource, RaycastSystem,
 };
 
-use super::events::{CameraMovementEvent, CameraZoomEvent, Direction, MovementEvent};
+use super::events::{
+    CameraMovementEvent, CameraZoomEvent, Direction, MovementEvent, StateChangeEvent,
+};
 use super::resources::GameState;
 
 pub struct InputPlugin;
@@ -11,9 +13,10 @@ pub struct InputPlugin;
 impl Plugin for InputPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<PauseUnpauseEvent>()
-            .add_event::<MovementEvent>()
             .add_event::<CameraMovementEvent>()
             .add_event::<CameraZoomEvent>()
+            .add_event::<MovementEvent>()
+            .add_event::<StateChangeEvent>()
             .add_systems(
                 First,
                 update_raycast_with_cursor.before(RaycastSystem::BuildRays::<MouseoverRaycastSet>),
@@ -39,9 +42,10 @@ pub fn input_system(
     keyboard_input: Res<Input<KeyCode>>,
     state: Res<State<GameState>>,
     mut pause_unpause_event_writer: EventWriter<PauseUnpauseEvent>,
-    movement_event_writer: EventWriter<MovementEvent>,
     camera_movement_event_writer: EventWriter<CameraMovementEvent>,
     zoom_event_writer: EventWriter<CameraZoomEvent>,
+    movement_event_writer: EventWriter<MovementEvent>,
+    state_change_event_writer: EventWriter<StateChangeEvent>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Escape) {
         pause_unpause_event_writer.send(PauseUnpauseEvent);
@@ -49,9 +53,17 @@ pub fn input_system(
 
     match state.get() {
         GameState::Exploring => {
-            handle_movement(&keyboard_input, movement_event_writer);
             handle_camera_movement(&keyboard_input, camera_movement_event_writer);
             handle_camera_zoom(&keyboard_input, zoom_event_writer);
+            handle_movement(&keyboard_input, movement_event_writer);
+            handle_interact(&keyboard_input, state_change_event_writer);
+        }
+        GameState::Interacting => {
+            handle_exit(
+                &keyboard_input,
+                state_change_event_writer,
+                GameState::Exploring,
+            );
         }
         _ => {}
     }
@@ -148,4 +160,22 @@ fn handle_camera_movement(
     }
 }
 
+fn handle_interact(
+    keyboard_input: &Res<Input<KeyCode>>,
+    mut state_change_event_writer: EventWriter<StateChangeEvent>,
+) {
+    if keyboard_input.just_pressed(KeyCode::Space) {
+        state_change_event_writer.send(StateChangeEvent(GameState::Interacting));
+    }
+}
+
+fn handle_exit(
+    keyboard_input: &Res<Input<KeyCode>>,
+    mut state_change_event_writer: EventWriter<StateChangeEvent>,
+    state: GameState,
+) {
+    if keyboard_input.just_pressed(KeyCode::Escape) {
+        state_change_event_writer.send(StateChangeEvent(state));
+    }
+}
 // End Helper Functions

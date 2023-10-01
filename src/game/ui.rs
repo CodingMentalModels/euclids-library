@@ -73,7 +73,7 @@ fn load_map(
 
     let map_layer = map
         .0
-        .get(player_location.0.get_map_layer())
+        .get_layer(player_location.0.get_map_layer())
         .expect("Player's layer must exist.");
 
     let tile_grid = TileGrid::from_map_layer(map_layer.clone());

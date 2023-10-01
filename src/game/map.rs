@@ -21,12 +21,16 @@ impl Map {
         Self(layers)
     }
 
-    pub fn get(&self, i: usize) -> Result<&MapLayer, MapError> {
+    pub fn get_layer(&self, i: usize) -> Result<&MapLayer, MapError> {
         if i >= self.0.len() {
             return Err(MapError::OutOfBounds);
         }
-
         return Ok(&self.0[i]);
+    }
+
+    pub fn get(&self, location: MapLocation) -> Result<&Tile, MapError> {
+        self.get_layer(location.map_layer)
+            .map(|layer| layer.get_from_location(location.get_tile_location()))
     }
 }
 
@@ -57,7 +61,13 @@ impl MapLayer {
     }
 
     pub fn get(&self, i: usize, j: usize) -> &Tile {
+        // TODO Handle out of bounds
         &self.0[i][j]
+    }
+
+    pub fn get_from_location(&self, location: TileLocation) -> &Tile {
+        // TODO Handle out of bounds
+        self.get(location.x() as usize, location.y() as usize)
     }
 
     pub fn size(&self) -> usize {
