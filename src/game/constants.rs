@@ -1,5 +1,5 @@
 // Filepaths
-pub const ENEMY_SPEC_DIRECTORY: &str = "assets/specs/enemies/";
+pub const NPC_DIRECTORY: &str = "assets/specs/npcs/";
 
 // Game Parameters
 
