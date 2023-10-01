@@ -30,7 +30,7 @@ impl Map {
 
     pub fn get(&self, location: MapLocation) -> Result<&Tile, MapError> {
         self.get_layer(location.map_layer)
-            .map(|layer| layer.get_from_location(location.get_tile_location()))
+            .and_then(|layer| layer.get_from_location(location.get_tile_location()))
     }
 }
 
@@ -60,13 +60,15 @@ impl MapLayer {
         Self::new(vec![vec![tile; height]; width])
     }
 
-    pub fn get(&self, i: usize, j: usize) -> &Tile {
-        // TODO Handle out of bounds
-        &self.0[i][j]
+    pub fn get(&self, i: usize, j: usize) -> Result<&Tile, MapError> {
+        if !self.is_in_bounds(i, j) {
+            Err(MapError::OutOfBounds)
+        } else {
+            Ok(&self.0[i][j])
+        }
     }
 
-    pub fn get_from_location(&self, location: TileLocation) -> &Tile {
-        // TODO Handle out of bounds
+    pub fn get_from_location(&self, location: TileLocation) -> Result<&Tile, MapError> {
         self.get(location.x() as usize, location.y() as usize)
     }
 
@@ -127,6 +129,10 @@ impl MapLayer {
             self.0[0][j] = tile.clone();
             self.0[width - 1][j] = tile.clone();
         })
+    }
+
+    fn is_in_bounds(&self, i: usize, j: usize) -> bool {
+        (i >= self.width()) || (j >= self.height())
     }
 }
 
