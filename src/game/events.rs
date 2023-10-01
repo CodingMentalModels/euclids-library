@@ -20,8 +20,8 @@ fn change_state_system(
     mut commands: Commands,
     mut state_change_event_reader: EventReader<StateChangeEvent>,
 ) {
-    for _event in state_change_event_reader.iter() {
-        commands.insert_resource(NextState(Some(GameState::Interacting)));
+    for event in state_change_event_reader.iter() {
+        commands.insert_resource(NextState(Some(event.0)));
     }
 }
 
