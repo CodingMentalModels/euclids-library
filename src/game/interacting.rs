@@ -2,28 +2,36 @@ use bevy::prelude::*;
 
 use super::{
     dialog::Dialog,
-    events::DirectionEvent,
+    events::ChooseDirectionEvent,
     map::Map,
     player::{LocationComponent, PlayerComponent},
     resources::{GameState, LoadedMap},
+    ui_state::{ExploringUIState, InteractingUIState},
 };
 
 pub struct InteractingPlugin;
 
 impl Plugin for InteractingPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            handle_direction_choice_system
-                .run_if(in_state(GameState::Interacting).and_then(on_event::<DirectionEvent>())),
-        );
+        app.add_systems(OnEnter(GameState::Interacting), setup_interacting_system)
+            .add_systems(
+                Update,
+                handle_direction_choice_system.run_if(
+                    in_state(GameState::Interacting).and_then(on_event::<ChooseDirectionEvent>()),
+                ),
+            )
+            .add_systems(
+                Update,
+                render_system.run_if(in_state(GameState::Interacting)),
+            )
+            .add_systems(OnExit(GameState::Interacting), tear_down_interacting_system);
     }
 }
 
 // Resources
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Resource)]
-enum InteractingState {
+pub enum InteractingState {
     #[default]
     ChoosingDirection,
     Interacting(Interactable),
@@ -39,9 +47,14 @@ pub struct InteractableComponent(pub Interactable);
 
 // Systems
 
+fn setup_interacting_system(mut commands: Commands, exploring_ui_state: Res<ExploringUIState>) {
+    commands.insert_resource(InteractingState::default());
+    commands.insert_resource(InteractingUIState::from(exploring_ui_state.clone()));
+}
+
 fn handle_direction_choice_system(
     mut state: ResMut<InteractingState>,
-    mut reader: EventReader<DirectionEvent>,
+    mut reader: EventReader<ChooseDirectionEvent>,
     player_query: Query<&LocationComponent, With<PlayerComponent>>,
     interactable_query: Query<
         (&LocationComponent, &InteractableComponent),
@@ -72,6 +85,19 @@ fn handle_direction_choice_system(
         }
     }
 }
+
+fn render_system(
+    mut ui_state: ResMut<InteractingUIState>,
+    interacting_state: Res<InteractingState>,
+) {
+    ui_state.interacting_state = interacting_state.clone();
+}
+
+fn tear_down_interacting_system(mut commands: Commands) {
+    commands.remove_resource::<InteractingState>();
+    commands.remove_resource::<InteractingUIState>();
+}
+
 // End Systems
 
 // Structs

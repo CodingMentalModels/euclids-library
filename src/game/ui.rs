@@ -11,10 +11,13 @@ use crate::game::input::MouseoverRaycastSet;
 use crate::game::resources::*;
 
 use super::events::CameraZoomEvent;
+use super::interacting::{Interactable, InteractingState};
 use super::map::{MapLayer, SurfaceTile, Tile, TileLocation};
 use super::npc::NPCComponent;
 use super::player::{LocationComponent, PlayerComponent};
-use super::ui_state::{AsciiTileAppearance, TileAppearance, TileGrid};
+use super::ui_state::{
+    AsciiTileAppearance, ExploringUIState, InteractingUIState, TileAppearance, TileGrid,
+};
 
 pub struct UIPlugin;
 
@@ -31,6 +34,10 @@ impl Plugin for UIPlugin {
             .add_systems(
                 Update,
                 update_positions.run_if(in_state(GameState::Exploring)),
+            )
+            .add_systems(
+                Update,
+                render_interacting.run_if(in_state(GameState::Interacting)),
             );
     }
 }
@@ -77,6 +84,9 @@ fn load_map(
         .expect("Player's layer must exist.");
 
     let tile_grid = TileGrid::from_map_layer(map_layer.clone());
+    commands.insert_resource(ExploringUIState {
+        tile_grid: tile_grid.clone(),
+    });
     tile_grid.render(&mut commands, font.0.clone());
 
     map_layer
@@ -100,7 +110,7 @@ fn load_map(
 
     for (entity, location) in npc_query.iter() {
         let npc_tile = TileAppearance::Ascii('&'.into());
-        let npc_sprite = npc_tile.render(
+        let _npc_sprite = npc_tile.render(
             &mut commands
                 .get_entity(entity)
                 .expect("NPC Entity must exist if it was returned from the query."),
@@ -129,8 +139,20 @@ fn update_camera_zoom(
             let log_zoom = orthographic_projection.scale
                 * CAMERA_ZOOM_LOG_BASE.powf(CAMERA_ZOOM_SPEED * amount);
             orthographic_projection.scale = log_zoom;
-            info!("Zoom: {:?}", orthographic_projection.scale);
         }
+    }
+}
+
+fn render_interacting(ui_state: Res<InteractingUIState>) {
+    match &ui_state.interacting_state {
+        InteractingState::ChoosingDirection => {
+            info!("Choose a direction.");
+        }
+        InteractingState::Interacting(interaction) => match &interaction {
+            Interactable::Dialog(dialog) => {
+                info!("{:?}", dialog);
+            }
+        },
     }
 }
 

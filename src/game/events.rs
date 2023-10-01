@@ -59,9 +59,9 @@ impl MovementEvent {
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
-pub struct DirectionEvent(pub Direction);
+pub struct ChooseDirectionEvent(pub Direction);
 
-impl DirectionEvent {
+impl ChooseDirectionEvent {
     pub fn as_vector(&self) -> Vec2 {
         self.0.as_vector()
     }

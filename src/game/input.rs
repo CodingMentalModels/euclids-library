@@ -4,7 +4,8 @@ use bevy_mod_raycast::{
 };
 
 use super::events::{
-    CameraMovementEvent, CameraZoomEvent, Direction, MovementEvent, StateChangeEvent,
+    CameraMovementEvent, CameraZoomEvent, ChooseDirectionEvent, Direction, MovementEvent,
+    StateChangeEvent,
 };
 use super::resources::GameState;
 
@@ -17,6 +18,7 @@ impl Plugin for InputPlugin {
             .add_event::<CameraZoomEvent>()
             .add_event::<MovementEvent>()
             .add_event::<StateChangeEvent>()
+            .add_event::<ChooseDirectionEvent>()
             .add_systems(
                 First,
                 update_raycast_with_cursor.before(RaycastSystem::BuildRays::<MouseoverRaycastSet>),
@@ -42,10 +44,11 @@ pub fn input_system(
     keyboard_input: Res<Input<KeyCode>>,
     state: Res<State<GameState>>,
     mut pause_unpause_event_writer: EventWriter<PauseUnpauseEvent>,
+    state_change_event_writer: EventWriter<StateChangeEvent>,
     camera_movement_event_writer: EventWriter<CameraMovementEvent>,
     zoom_event_writer: EventWriter<CameraZoomEvent>,
     movement_event_writer: EventWriter<MovementEvent>,
-    state_change_event_writer: EventWriter<StateChangeEvent>,
+    choose_direction_event_writer: EventWriter<ChooseDirectionEvent>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Escape) {
         pause_unpause_event_writer.send(PauseUnpauseEvent);
@@ -64,6 +67,7 @@ pub fn input_system(
                 state_change_event_writer,
                 GameState::Exploring,
             );
+            handle_choose_direction(&keyboard_input, choose_direction_event_writer);
         }
         _ => {}
     }
@@ -96,36 +100,13 @@ fn handle_movement(
     keyboard_input: &Res<Input<KeyCode>>,
     mut movement_event_writer: EventWriter<MovementEvent>,
 ) {
-    if keyboard_input.just_pressed(KeyCode::Numpad8) {
-        movement_event_writer.send(MovementEvent(Direction::Up));
-    }
-
-    if keyboard_input.just_pressed(KeyCode::Numpad2) {
-        movement_event_writer.send(MovementEvent(Direction::Down));
-    }
-
-    if keyboard_input.just_pressed(KeyCode::Numpad4) {
-        movement_event_writer.send(MovementEvent(Direction::Left));
-    }
-
-    if keyboard_input.just_pressed(KeyCode::Numpad6) {
-        movement_event_writer.send(MovementEvent(Direction::Right));
-    }
-
-    if keyboard_input.just_pressed(KeyCode::Numpad7) {
-        movement_event_writer.send(MovementEvent(Direction::UpLeft));
-    }
-
-    if keyboard_input.just_pressed(KeyCode::Numpad9) {
-        movement_event_writer.send(MovementEvent(Direction::UpRight));
-    }
-
-    if keyboard_input.just_pressed(KeyCode::Numpad1) {
-        movement_event_writer.send(MovementEvent(Direction::DownLeft));
-    }
-
-    if keyboard_input.just_pressed(KeyCode::Numpad3) {
-        movement_event_writer.send(MovementEvent(Direction::DownRight));
+    match get_direction_from_keycode(keyboard_input) {
+        Some(direction) => {
+            movement_event_writer.send(MovementEvent(direction));
+        }
+        _ => {
+            // Do nothing
+        }
     }
 }
 
@@ -176,6 +157,42 @@ fn handle_exit(
 ) {
     if keyboard_input.just_pressed(KeyCode::Escape) {
         state_change_event_writer.send(StateChangeEvent(state));
+    }
+}
+
+fn handle_choose_direction(
+    keyboard_input: &Res<Input<KeyCode>>,
+    mut choose_direction_event_writer: EventWriter<ChooseDirectionEvent>,
+) {
+    match get_direction_from_keycode(keyboard_input) {
+        Some(direction) => {
+            choose_direction_event_writer.send(ChooseDirectionEvent(direction));
+        }
+        _ => {
+            // Do nothing
+        }
+    }
+}
+
+fn get_direction_from_keycode(keyboard_input: &Res<Input<KeyCode>>) -> Option<Direction> {
+    if keyboard_input.just_pressed(KeyCode::Numpad8) {
+        Some(Direction::Up)
+    } else if keyboard_input.just_pressed(KeyCode::Numpad2) {
+        Some(Direction::Down)
+    } else if keyboard_input.just_pressed(KeyCode::Numpad4) {
+        Some(Direction::Left)
+    } else if keyboard_input.just_pressed(KeyCode::Numpad6) {
+        Some(Direction::Right)
+    } else if keyboard_input.just_pressed(KeyCode::Numpad7) {
+        Some(Direction::UpLeft)
+    } else if keyboard_input.just_pressed(KeyCode::Numpad9) {
+        Some(Direction::UpRight)
+    } else if keyboard_input.just_pressed(KeyCode::Numpad1) {
+        Some(Direction::DownLeft)
+    } else if keyboard_input.just_pressed(KeyCode::Numpad3) {
+        Some(Direction::DownRight)
+    } else {
+        None
     }
 }
 // End Helper Functions
