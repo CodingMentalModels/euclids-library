@@ -4,8 +4,8 @@ use bevy_mod_raycast::{
 };
 
 use super::events::{
-    CameraMovementEvent, CameraZoomEvent, ChooseDirectionEvent, Direction, MovementEvent,
-    StateChangeEvent,
+    CameraMovementEvent, CameraZoomEvent, ChooseDirectionEvent, ContinueEvent, Direction,
+    MovementEvent, StateChangeEvent,
 };
 use super::resources::GameState;
 
@@ -19,6 +19,7 @@ impl Plugin for InputPlugin {
             .add_event::<MovementEvent>()
             .add_event::<StateChangeEvent>()
             .add_event::<ChooseDirectionEvent>()
+            .add_event::<ContinueEvent>()
             .add_systems(
                 First,
                 update_raycast_with_cursor.before(RaycastSystem::BuildRays::<MouseoverRaycastSet>),
@@ -49,6 +50,7 @@ pub fn input_system(
     zoom_event_writer: EventWriter<CameraZoomEvent>,
     movement_event_writer: EventWriter<MovementEvent>,
     choose_direction_event_writer: EventWriter<ChooseDirectionEvent>,
+    continue_event_writer: EventWriter<ContinueEvent>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Escape) {
         pause_unpause_event_writer.send(PauseUnpauseEvent);
@@ -62,6 +64,7 @@ pub fn input_system(
             handle_interact(&keyboard_input, state_change_event_writer);
         }
         GameState::Interacting => {
+            handle_continue(&keyboard_input, continue_event_writer);
             handle_exit(
                 &keyboard_input,
                 state_change_event_writer,
@@ -157,6 +160,15 @@ fn handle_exit(
 ) {
     if keyboard_input.just_pressed(KeyCode::Escape) {
         state_change_event_writer.send(StateChangeEvent(state));
+    }
+}
+
+fn handle_continue(
+    keyboard_input: &Res<Input<KeyCode>>,
+    mut continue_event_writer: EventWriter<ContinueEvent>,
+) {
+    if keyboard_input.just_pressed(KeyCode::Space) || keyboard_input.just_pressed(KeyCode::Return) {
+        continue_event_writer.send(ContinueEvent);
     }
 }
 

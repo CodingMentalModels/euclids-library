@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use super::{
     dialog::Dialog,
-    events::{ChooseDirectionEvent, UpdateUIEvent},
+    events::{ChooseDirectionEvent, ContinueEvent, UpdateUIEvent},
     map::Map,
     player::{LocationComponent, PlayerComponent},
     resources::{GameState, LoadedMap},
@@ -24,6 +24,11 @@ impl Plugin for InteractingPlugin {
                 Update,
                 update_interacting_ui_state_system
                     .run_if(in_state(GameState::Interacting).and_then(on_event::<UpdateUIEvent>())),
+            )
+            .add_systems(
+                Update,
+                progress_prompt_system
+                    .run_if(in_state(GameState::Interacting).and_then(on_event::<ContinueEvent>())),
             )
             .add_systems(OnExit(GameState::Interacting), tear_down_interacting_system);
     }
@@ -100,6 +105,31 @@ pub fn update_interacting_ui_state_system(
     interacting_state: Res<InteractingState>,
 ) {
     ui_state.interacting_state = interacting_state.clone();
+}
+
+fn progress_prompt_system(mut commands: Commands, mut ui_state: ResMut<InteractingUIState>) {
+    match &ui_state.interacting_state {
+        InteractingState::Interacting(interaction) => match &interaction {
+            Interactable::Dialog(dialog) => match dialog {
+                Dialog::PlayerDialog(options) => {
+                    panic!("Not implemented yet.");
+                }
+                Dialog::NPCDialog(npc_dialog) => match npc_dialog.get_next() {
+                    Some(next_dialog) => {
+                        info!("Progressing dialog.");
+                        ui_state.interacting_state =
+                            InteractingState::Interacting(Interactable::Dialog(next_dialog));
+                    }
+                    None => {
+                        commands.insert_resource(NextState(Some(GameState::Exploring)));
+                    }
+                },
+            },
+        },
+        _ => {
+            // Do nothing
+        }
+    }
 }
 
 fn tear_down_interacting_system(mut commands: Commands) {

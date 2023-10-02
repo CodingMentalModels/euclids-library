@@ -32,6 +32,9 @@ fn change_state_system(
 pub struct UpdateUIEvent;
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
+pub struct ContinueEvent;
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
 pub struct CameraZoomEvent(pub i32);
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]

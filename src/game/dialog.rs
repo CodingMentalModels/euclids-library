@@ -64,4 +64,16 @@ impl NPCDialog {
             )
         }
     }
+
+    pub fn get_speaker(&self) -> String {
+        self.speaker.clone()
+    }
+
+    pub fn get_contents(&self) -> String {
+        self.contents.clone()
+    }
+
+    pub fn get_next(&self) -> Option<Dialog> {
+        self.next.clone()
+    }
 }

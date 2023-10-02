@@ -6,6 +6,7 @@ use crate::game::constants::*;
 use crate::game::input::MouseoverRaycastSet;
 use crate::game::resources::*;
 
+use super::dialog::Dialog;
 use super::events::{CameraZoomEvent, UpdateUIEvent};
 use super::interacting::{update_interacting_ui_state_system, Interactable, InteractingState};
 use super::ui_state::{
@@ -28,7 +29,7 @@ impl Plugin for UIPlugin {
                 Update,
                 render_interacting_ui
                     .after(update_interacting_ui_state_system)
-                    .run_if(in_state(GameState::Interacting).and_then(on_event::<UpdateUIEvent>())),
+                    .run_if(in_state(GameState::Interacting)),
             );
 
         app.insert_resource(MaterialCache::empty());
@@ -77,15 +78,35 @@ fn update_camera_zoom(
     }
 }
 
-fn render_interacting_ui(ui_state: Res<InteractingUIState>) {
+fn render_interacting_ui(
+    mut commands: Commands,
+    mut contexts: EguiContexts,
+    mut ui_state: ResMut<InteractingUIState>,
+) {
+    let ctx = contexts.ctx_mut();
     match &ui_state.interacting_state {
         InteractingState::ChoosingDirection => {
-            info!("Choose a direction.");
+            egui::TopBottomPanel::top("top-panel").show(ctx, |ui| {
+                ui.label("Choose a direction to interact.");
+            });
         }
         InteractingState::Interacting(interaction) => match &interaction {
-            Interactable::Dialog(dialog) => {
-                info!("{:?}", dialog);
-            }
+            Interactable::Dialog(dialog) => match dialog {
+                Dialog::PlayerDialog(options) => {
+                    panic!("Not implemented yet.");
+                }
+                Dialog::NPCDialog(npc_dialog) => {
+                    let content = format!(
+                        "{}: {}",
+                        npc_dialog.get_speaker(),
+                        npc_dialog.get_contents()
+                    );
+
+                    egui::TopBottomPanel::top("top-panel").show(ctx, |ui| {
+                        ui.label(content);
+                    });
+                }
+            },
         },
     }
 }

@@ -44,6 +44,17 @@ impl Plugin for ExploringPlugin {
     }
 }
 
+// Resources
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Resource)]
+pub struct ShouldSpawn(pub bool);
+
+// End Resources
+
+// Events
+
+// End Events
+
 // Systems
 
 fn load_map_system(mut commands: Commands) {
@@ -59,6 +70,7 @@ fn load_map_system(mut commands: Commands) {
 
     commands.insert_resource(LoadedMap(map_layer.into()));
     commands.insert_resource(NextState(Some(GameState::Exploring)));
+    commands.insert_resource(ShouldSpawn(true));
 }
 
 fn move_player_system(
@@ -87,7 +99,6 @@ fn move_camera_system(
     let mut transform = query.single_mut();
     for event in camera_movement_event_reader.iter() {
         transform.translation += event.0.as_vector().extend(0.) * CAMERA_MOVE_SPEED;
-        info!("New transform: {:?}", transform.translation);
     }
 }
 
@@ -97,7 +108,14 @@ fn spawn_map(
     npc_query: Query<(Entity, &LocationComponent), With<NPCComponent>>,
     map: Res<LoadedMap>,
     font: Res<LoadedFont>,
+    mut should_spawn: ResMut<ShouldSpawn>,
 ) {
+    if !should_spawn.0 {
+        info!("Ignoring spawn_map.");
+        return;
+    }
+
+    info!("Spawning map.");
     let (player_entity, player_location) = player_query.single();
 
     let map_layer = map
@@ -137,6 +155,8 @@ fn spawn_map(
             TileGrid::tile_to_world_coordinates(location.0.get_tile_location()),
         );
     }
+
+    should_spawn.0 = false;
 }
 
 fn emit_particles_system(
@@ -220,7 +240,6 @@ fn despawn_particles_offscreen_system(
             || position_relative.y < -adjusted_height
             || position_relative.y > adjusted_height
         {
-            info!("Despawning particle");
             commands.entity(entity).despawn_recursive();
         }
     }
