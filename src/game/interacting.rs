@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use super::{
     dialog::Dialog,
-    events::ChooseDirectionEvent,
+    events::{ChooseDirectionEvent, UpdateUIEvent},
     map::Map,
     player::{LocationComponent, PlayerComponent},
     resources::{GameState, LoadedMap},
@@ -22,7 +22,8 @@ impl Plugin for InteractingPlugin {
             )
             .add_systems(
                 Update,
-                render_system.run_if(in_state(GameState::Interacting)),
+                update_interacting_ui_state_system
+                    .run_if(in_state(GameState::Interacting).and_then(on_event::<UpdateUIEvent>())),
             )
             .add_systems(OnExit(GameState::Interacting), tear_down_interacting_system);
     }
@@ -47,15 +48,20 @@ pub struct InteractableComponent(pub Interactable);
 
 // Systems
 
-fn setup_interacting_system(mut commands: Commands) {
+fn setup_interacting_system(
+    mut commands: Commands,
+    mut update_ui_event_writer: EventWriter<UpdateUIEvent>,
+) {
     commands.insert_resource(InteractingState::default());
     commands.insert_resource(InteractingUIState::default());
+    update_ui_event_writer.send(UpdateUIEvent);
 }
 
 fn handle_direction_choice_system(
     mut commands: Commands,
     mut state: ResMut<InteractingState>,
     mut reader: EventReader<ChooseDirectionEvent>,
+    mut update_ui_event_writer: EventWriter<UpdateUIEvent>,
     player_query: Query<&LocationComponent, With<PlayerComponent>>,
     interactable_query: Query<
         (&LocationComponent, &InteractableComponent),
@@ -78,6 +84,7 @@ fn handle_direction_choice_system(
                     }
                     Some((_location, interaction)) => {
                         *state = InteractingState::Interacting(interaction.0.clone());
+                        update_ui_event_writer.send(UpdateUIEvent);
                     }
                 }
             }
@@ -88,7 +95,7 @@ fn handle_direction_choice_system(
     }
 }
 
-fn render_system(
+pub fn update_interacting_ui_state_system(
     mut ui_state: ResMut<InteractingUIState>,
     interacting_state: Res<InteractingState>,
 ) {

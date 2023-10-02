@@ -6,10 +6,8 @@ use crate::game::constants::*;
 use crate::game::input::MouseoverRaycastSet;
 use crate::game::resources::*;
 
-use super::events::CameraZoomEvent;
-use super::interacting::{Interactable, InteractingState};
-use super::npc::NPCComponent;
-use super::player::{LocationComponent, PlayerComponent};
+use super::events::{CameraZoomEvent, UpdateUIEvent};
+use super::interacting::{update_interacting_ui_state_system, Interactable, InteractingState};
 use super::ui_state::{
     AsciiTileAppearance, ExploringUIState, InteractingUIState, TileAppearance, TileGrid,
 };
@@ -18,7 +16,8 @@ pub struct UIPlugin;
 
 impl Plugin for UIPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(EguiPlugin)
+        app.add_event::<UpdateUIEvent>()
+            .add_plugins(EguiPlugin)
             .add_systems(OnEnter(GameState::LoadingUI), configure_visuals)
             .add_systems(OnEnter(GameState::LoadingUI), ui_load_system)
             .add_systems(
@@ -27,7 +26,9 @@ impl Plugin for UIPlugin {
             )
             .add_systems(
                 Update,
-                render_interacting_ui.run_if(in_state(GameState::Interacting)),
+                render_interacting_ui
+                    .after(update_interacting_ui_state_system)
+                    .run_if(in_state(GameState::Interacting).and_then(on_event::<UpdateUIEvent>())),
             );
 
         app.insert_resource(MaterialCache::empty());
