@@ -28,6 +28,14 @@ fn change_state_system(
 // End Systems
 
 // Events
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
+pub struct UpdateUIEvent;
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
+pub enum ProgressPromptEvent {
+    Continue,
+    ChooseOption(usize),
+}
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
 pub struct CameraZoomEvent(pub i32);

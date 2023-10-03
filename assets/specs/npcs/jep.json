@@ -19,9 +19,22 @@
       {
         "NPCDialog":
         {
-          "speaker": "Example NPC",
+          "speaker": "Jep",
           "contents": "Hear me roar!",
-          "next": null
+          "next":
+          {
+            "PlayerDialog":
+            [
+              [
+                "I couldn't hear that.",
+                null
+              ],
+              [
+                "Ahhhhh!",
+                null
+              ]
+            ]
+          }
         }
       }
     }

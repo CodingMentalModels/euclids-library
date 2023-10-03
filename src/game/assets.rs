@@ -26,13 +26,21 @@ impl Plugin for AssetsPlugin {
 // Systems
 
 fn generate_example_specs_system() {
+    let mut example_dialog = Dialog::story(
+        "Example NPC".to_string(),
+        vec!["I'm an NPC.".to_string(), "Hear me roar!".to_string()],
+    );
+    example_dialog.update_leaf_at(
+        vec![],
+        Dialog::PlayerDialog(Box::new(vec![
+            ("I couldn't hear that.".to_string(), None),
+            ("Ahhhhh!".to_string(), None),
+        ])),
+    );
     let npc = NPC::new(
         "Example NPC".to_string(),
         MapLocation::new(0, TileLocation::new(4, 5)),
-        Dialog::story(
-            "Example NPC".to_string(),
-            vec!["I'm an NPC.".to_string(), "Hear me roar!".to_string()],
-        ),
+        example_dialog,
     );
 
     let npc_string = serde_json::to_string(&npc).expect("Error serializing npc");

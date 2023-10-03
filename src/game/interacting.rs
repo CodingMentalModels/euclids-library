@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use super::{
     dialog::Dialog,
-    events::ChooseDirectionEvent,
+    events::{ChooseDirectionEvent, ProgressPromptEvent, UpdateUIEvent},
     map::Map,
     player::{LocationComponent, PlayerComponent},
     resources::{GameState, LoadedMap},
@@ -22,7 +22,14 @@ impl Plugin for InteractingPlugin {
             )
             .add_systems(
                 Update,
-                render_system.run_if(in_state(GameState::Interacting)),
+                update_interacting_ui_state_system
+                    .run_if(in_state(GameState::Interacting).and_then(on_event::<UpdateUIEvent>())),
+            )
+            .add_systems(
+                Update,
+                progress_prompt_system.run_if(
+                    in_state(GameState::Interacting).and_then(on_event::<ProgressPromptEvent>()),
+                ),
             )
             .add_systems(OnExit(GameState::Interacting), tear_down_interacting_system);
     }
@@ -47,15 +54,20 @@ pub struct InteractableComponent(pub Interactable);
 
 // Systems
 
-fn setup_interacting_system(mut commands: Commands, exploring_ui_state: Res<ExploringUIState>) {
+fn setup_interacting_system(
+    mut commands: Commands,
+    mut update_ui_event_writer: EventWriter<UpdateUIEvent>,
+) {
     commands.insert_resource(InteractingState::default());
-    commands.insert_resource(InteractingUIState::from(exploring_ui_state.clone()));
+    commands.insert_resource(InteractingUIState::default());
+    update_ui_event_writer.send(UpdateUIEvent);
 }
 
 fn handle_direction_choice_system(
     mut commands: Commands,
     mut state: ResMut<InteractingState>,
     mut reader: EventReader<ChooseDirectionEvent>,
+    mut update_ui_event_writer: EventWriter<UpdateUIEvent>,
     player_query: Query<&LocationComponent, With<PlayerComponent>>,
     interactable_query: Query<
         (&LocationComponent, &InteractableComponent),
@@ -78,6 +90,7 @@ fn handle_direction_choice_system(
                     }
                     Some((_location, interaction)) => {
                         *state = InteractingState::Interacting(interaction.0.clone());
+                        update_ui_event_writer.send(UpdateUIEvent);
                     }
                 }
             }
@@ -88,11 +101,79 @@ fn handle_direction_choice_system(
     }
 }
 
-fn render_system(
+pub fn update_interacting_ui_state_system(
     mut ui_state: ResMut<InteractingUIState>,
     interacting_state: Res<InteractingState>,
 ) {
     ui_state.interacting_state = interacting_state.clone();
+}
+
+fn progress_prompt_system(
+    mut commands: Commands,
+    mut ui_state: ResMut<InteractingUIState>,
+    mut progress_prompt_event_reader: EventReader<ProgressPromptEvent>,
+) {
+    for progress_prompt_event in progress_prompt_event_reader.iter() {
+        match &ui_state.interacting_state {
+            InteractingState::Interacting(interaction) => match &interaction {
+                Interactable::Dialog(dialog) => match dialog {
+                    Dialog::PlayerDialog(options) => {
+                        match progress_prompt_event {
+                            ProgressPromptEvent::ChooseOption(option) => {
+                                if *option >= options.len() {
+                                    // Do nothing
+                                } else {
+                                    info!(
+                                        "Progressing dialog with choice {}: {}.",
+                                        option,
+                                        options[*option].0.clone()
+                                    );
+                                    match &options[*option].1 {
+                                        Some(next_dialog) => {
+                                            ui_state.interacting_state =
+                                                InteractingState::Interacting(
+                                                    Interactable::Dialog(next_dialog.clone()),
+                                                );
+                                        }
+                                        None => {
+                                            commands.insert_resource(NextState(Some(
+                                                GameState::Exploring,
+                                            )));
+                                        }
+                                    }
+                                }
+                            }
+                            _ => {
+                                // Do nothing
+                            }
+                        }
+                    }
+
+                    Dialog::NPCDialog(npc_dialog) => {
+                        match progress_prompt_event {
+                            ProgressPromptEvent::Continue => match npc_dialog.get_next() {
+                                Some(next_dialog) => {
+                                    info!("Progressing dialog.");
+                                    ui_state.interacting_state = InteractingState::Interacting(
+                                        Interactable::Dialog(next_dialog),
+                                    );
+                                }
+                                None => {
+                                    commands.insert_resource(NextState(Some(GameState::Exploring)));
+                                }
+                            },
+                            _ => {
+                                // Do nothing
+                            }
+                        }
+                    }
+                },
+            },
+            _ => {
+                // Do nothing
+            }
+        }
+    }
 }
 
 fn tear_down_interacting_system(mut commands: Commands) {

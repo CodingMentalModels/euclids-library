@@ -5,7 +5,7 @@ use bevy_mod_raycast::{
 
 use super::events::{
     CameraMovementEvent, CameraZoomEvent, ChooseDirectionEvent, Direction, MovementEvent,
-    StateChangeEvent,
+    ProgressPromptEvent, StateChangeEvent,
 };
 use super::resources::GameState;
 
@@ -19,6 +19,7 @@ impl Plugin for InputPlugin {
             .add_event::<MovementEvent>()
             .add_event::<StateChangeEvent>()
             .add_event::<ChooseDirectionEvent>()
+            .add_event::<ProgressPromptEvent>()
             .add_systems(
                 First,
                 update_raycast_with_cursor.before(RaycastSystem::BuildRays::<MouseoverRaycastSet>),
@@ -49,6 +50,7 @@ pub fn input_system(
     zoom_event_writer: EventWriter<CameraZoomEvent>,
     movement_event_writer: EventWriter<MovementEvent>,
     choose_direction_event_writer: EventWriter<ChooseDirectionEvent>,
+    progress_prompt_event_writer: EventWriter<ProgressPromptEvent>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Escape) {
         pause_unpause_event_writer.send(PauseUnpauseEvent);
@@ -62,6 +64,7 @@ pub fn input_system(
             handle_interact(&keyboard_input, state_change_event_writer);
         }
         GameState::Interacting => {
+            handle_progress_prompt(&keyboard_input, progress_prompt_event_writer);
             handle_exit(
                 &keyboard_input,
                 state_change_event_writer,
@@ -160,6 +163,17 @@ fn handle_exit(
     }
 }
 
+fn handle_progress_prompt(
+    keyboard_input: &Res<Input<KeyCode>>,
+    mut progress_prompt_event_writer: EventWriter<ProgressPromptEvent>,
+) {
+    if keyboard_input.just_pressed(KeyCode::Space) || keyboard_input.just_pressed(KeyCode::Return) {
+        progress_prompt_event_writer.send(ProgressPromptEvent::Continue);
+    } else if let Some(digit) = get_digit_from_keycode(keyboard_input) {
+        progress_prompt_event_writer.send(ProgressPromptEvent::ChooseOption(digit));
+    }
+}
+
 fn handle_choose_direction(
     keyboard_input: &Res<Input<KeyCode>>,
     mut choose_direction_event_writer: EventWriter<ChooseDirectionEvent>,
@@ -191,6 +205,52 @@ fn get_direction_from_keycode(keyboard_input: &Res<Input<KeyCode>>) -> Option<Di
         Some(Direction::DownLeft)
     } else if keyboard_input.just_pressed(KeyCode::Numpad3) {
         Some(Direction::DownRight)
+    } else {
+        None
+    }
+}
+
+fn get_digit_from_keycode(keyboard_input: &Res<Input<KeyCode>>) -> Option<usize> {
+    if keyboard_input.just_pressed(KeyCode::Numpad0) {
+        Some(0)
+    } else if keyboard_input.just_pressed(KeyCode::Numpad1) {
+        Some(1)
+    } else if keyboard_input.just_pressed(KeyCode::Numpad2) {
+        Some(2)
+    } else if keyboard_input.just_pressed(KeyCode::Numpad3) {
+        Some(3)
+    } else if keyboard_input.just_pressed(KeyCode::Numpad4) {
+        Some(4)
+    } else if keyboard_input.just_pressed(KeyCode::Numpad5) {
+        Some(5)
+    } else if keyboard_input.just_pressed(KeyCode::Numpad6) {
+        Some(6)
+    } else if keyboard_input.just_pressed(KeyCode::Numpad7) {
+        Some(7)
+    } else if keyboard_input.just_pressed(KeyCode::Numpad8) {
+        Some(8)
+    } else if keyboard_input.just_pressed(KeyCode::Numpad9) {
+        Some(9)
+    } else if keyboard_input.just_pressed(KeyCode::Key0) {
+        Some(0)
+    } else if keyboard_input.just_pressed(KeyCode::Key1) {
+        Some(1)
+    } else if keyboard_input.just_pressed(KeyCode::Key2) {
+        Some(2)
+    } else if keyboard_input.just_pressed(KeyCode::Key3) {
+        Some(3)
+    } else if keyboard_input.just_pressed(KeyCode::Key4) {
+        Some(4)
+    } else if keyboard_input.just_pressed(KeyCode::Key5) {
+        Some(5)
+    } else if keyboard_input.just_pressed(KeyCode::Key6) {
+        Some(6)
+    } else if keyboard_input.just_pressed(KeyCode::Key7) {
+        Some(7)
+    } else if keyboard_input.just_pressed(KeyCode::Key8) {
+        Some(8)
+    } else if keyboard_input.just_pressed(KeyCode::Key9) {
+        Some(9)
     } else {
         None
     }
