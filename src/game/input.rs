@@ -50,7 +50,7 @@ pub fn input_system(
     zoom_event_writer: EventWriter<CameraZoomEvent>,
     movement_event_writer: EventWriter<MovementEvent>,
     choose_direction_event_writer: EventWriter<ChooseDirectionEvent>,
-    continue_event_writer: EventWriter<ProgressPromptEvent>,
+    progress_prompt_event_writer: EventWriter<ProgressPromptEvent>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Escape) {
         pause_unpause_event_writer.send(PauseUnpauseEvent);
@@ -64,7 +64,7 @@ pub fn input_system(
             handle_interact(&keyboard_input, state_change_event_writer);
         }
         GameState::Interacting => {
-            handle_continue(&keyboard_input, continue_event_writer);
+            handle_progress_prompt(&keyboard_input, progress_prompt_event_writer);
             handle_exit(
                 &keyboard_input,
                 state_change_event_writer,
@@ -163,14 +163,14 @@ fn handle_exit(
     }
 }
 
-fn handle_continue(
+fn handle_progress_prompt(
     keyboard_input: &Res<Input<KeyCode>>,
-    mut continue_event_writer: EventWriter<ProgressPromptEvent>,
+    mut progress_prompt_event_writer: EventWriter<ProgressPromptEvent>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Space) || keyboard_input.just_pressed(KeyCode::Return) {
-        continue_event_writer.send(ProgressPromptEvent::Continue);
+        progress_prompt_event_writer.send(ProgressPromptEvent::Continue);
     } else if let Some(digit) = get_digit_from_keycode(keyboard_input) {
-        continue_event_writer.send(ProgressPromptEvent::ChooseOption(digit));
+        progress_prompt_event_writer.send(ProgressPromptEvent::ChooseOption(digit));
     }
 }
 
