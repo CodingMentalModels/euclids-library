@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use super::{
     dialog::Dialog,
-    events::{ChooseDirectionEvent, ContinueEvent, UpdateUIEvent},
+    events::{ChooseDirectionEvent, ProgressPromptEvent, UpdateUIEvent},
     map::Map,
     player::{LocationComponent, PlayerComponent},
     resources::{GameState, LoadedMap},
@@ -27,8 +27,9 @@ impl Plugin for InteractingPlugin {
             )
             .add_systems(
                 Update,
-                progress_prompt_system
-                    .run_if(in_state(GameState::Interacting).and_then(on_event::<ContinueEvent>())),
+                progress_prompt_system.run_if(
+                    in_state(GameState::Interacting).and_then(on_event::<ProgressPromptEvent>()),
+                ),
             )
             .add_systems(OnExit(GameState::Interacting), tear_down_interacting_system);
     }
@@ -107,27 +108,70 @@ pub fn update_interacting_ui_state_system(
     ui_state.interacting_state = interacting_state.clone();
 }
 
-fn progress_prompt_system(mut commands: Commands, mut ui_state: ResMut<InteractingUIState>) {
-    match &ui_state.interacting_state {
-        InteractingState::Interacting(interaction) => match &interaction {
-            Interactable::Dialog(dialog) => match dialog {
-                Dialog::PlayerDialog(options) => {
-                    panic!("Not implemented yet.");
-                }
-                Dialog::NPCDialog(npc_dialog) => match npc_dialog.get_next() {
-                    Some(next_dialog) => {
-                        info!("Progressing dialog.");
-                        ui_state.interacting_state =
-                            InteractingState::Interacting(Interactable::Dialog(next_dialog));
+fn progress_prompt_system(
+    mut commands: Commands,
+    mut ui_state: ResMut<InteractingUIState>,
+    mut progress_prompt_event_reader: EventReader<ProgressPromptEvent>,
+) {
+    for progress_prompt_event in progress_prompt_event_reader.iter() {
+        match &ui_state.interacting_state {
+            InteractingState::Interacting(interaction) => match &interaction {
+                Interactable::Dialog(dialog) => match dialog {
+                    Dialog::PlayerDialog(options) => {
+                        match progress_prompt_event {
+                            ProgressPromptEvent::ChooseOption(option) => {
+                                if *option >= options.len() {
+                                    // Do nothing
+                                } else {
+                                    info!(
+                                        "Progressing dialog with choice {}: {}.",
+                                        option,
+                                        options[*option].0.clone()
+                                    );
+                                    match &options[*option].1 {
+                                        Some(next_dialog) => {
+                                            ui_state.interacting_state =
+                                                InteractingState::Interacting(
+                                                    Interactable::Dialog(next_dialog.clone()),
+                                                );
+                                        }
+                                        None => {
+                                            commands.insert_resource(NextState(Some(
+                                                GameState::Exploring,
+                                            )));
+                                        }
+                                    }
+                                }
+                            }
+                            _ => {
+                                // Do nothing
+                            }
+                        }
                     }
-                    None => {
-                        commands.insert_resource(NextState(Some(GameState::Exploring)));
+
+                    Dialog::NPCDialog(npc_dialog) => {
+                        match progress_prompt_event {
+                            ProgressPromptEvent::Continue => match npc_dialog.get_next() {
+                                Some(next_dialog) => {
+                                    info!("Progressing dialog.");
+                                    ui_state.interacting_state = InteractingState::Interacting(
+                                        Interactable::Dialog(next_dialog),
+                                    );
+                                }
+                                None => {
+                                    commands.insert_resource(NextState(Some(GameState::Exploring)));
+                                }
+                            },
+                            _ => {
+                                // Do nothing
+                            }
+                        }
                     }
                 },
             },
-        },
-        _ => {
-            // Do nothing
+            _ => {
+                // Do nothing
+            }
         }
     }
 }

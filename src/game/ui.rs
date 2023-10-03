@@ -91,22 +91,29 @@ fn render_interacting_ui(
             });
         }
         InteractingState::Interacting(interaction) => match &interaction {
-            Interactable::Dialog(dialog) => match dialog {
-                Dialog::PlayerDialog(options) => {
-                    panic!("Not implemented yet.");
-                }
-                Dialog::NPCDialog(npc_dialog) => {
-                    let content = format!(
-                        "{}: {}",
-                        npc_dialog.get_speaker(),
-                        npc_dialog.get_contents()
-                    );
+            Interactable::Dialog(dialog) => {
+                let content = match dialog {
+                    Dialog::PlayerDialog(options) => {
+                        let content = options
+                            .iter()
+                            .enumerate()
+                            .map(|(i, option)| format!("{}) {}", i, option.0))
+                            .collect::<Vec<_>>();
+                        content.join("\n")
+                    }
+                    Dialog::NPCDialog(npc_dialog) => {
+                        format!(
+                            "{}: {}",
+                            npc_dialog.get_speaker(),
+                            npc_dialog.get_contents()
+                        )
+                    }
+                };
 
-                    egui::TopBottomPanel::top("top-panel").show(ctx, |ui| {
-                        ui.label(content);
-                    });
-                }
-            },
+                egui::TopBottomPanel::top("top-panel").show(ctx, |ui| {
+                    ui.label(content);
+                });
+            }
         },
     }
 }
