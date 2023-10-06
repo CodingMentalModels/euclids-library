@@ -9,12 +9,18 @@ use super::map::TileLocation;
 #[derive(Component, Clone, Copy)]
 pub struct PlayerComponent;
 
-#[derive(Component, Clone, Copy)]
+#[derive(Component, Clone, Copy, PartialEq)]
 pub struct LocationComponent(pub MapLocation);
 
 impl LocationComponent {
     pub fn translate(&mut self, amount: TileLocation) {
         self.0.translate(amount);
+    }
+
+    pub fn translated(&self, amount: TileLocation) -> Self {
+        let mut to_return = self.clone();
+        to_return.translate(amount);
+        to_return
     }
 }
 

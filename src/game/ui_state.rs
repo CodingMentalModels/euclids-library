@@ -3,11 +3,15 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::constants::*;
+use super::interacting::InteractingState;
 use super::map::{MapLayer, SurfaceTile, Tile, TileLocation};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Resource)]
-pub struct ExploringUIState {
-    pub tile_grid: TileGrid,
+pub struct ExploringUIState {}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Resource)]
+pub struct InteractingUIState {
+    pub interacting_state: InteractingState,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]

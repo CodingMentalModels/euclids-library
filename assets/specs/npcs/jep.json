@@ -1,0 +1,42 @@
+{
+  "name": "Jep",
+  "location":
+  {
+    "map_layer": 0,
+    "tile_location":
+    {
+      "i": 4,
+      "j": 5
+    }
+  },
+  "dialog":
+  {
+    "NPCDialog":
+    {
+      "speaker": "Jep",
+      "contents": "I'm an NPC.",
+      "next":
+      {
+        "NPCDialog":
+        {
+          "speaker": "Jep",
+          "contents": "Hear me roar!",
+          "next":
+          {
+            "PlayerDialog":
+            [
+              [
+                "I couldn't hear that.",
+                null
+              ],
+              [
+                "Ahhhhh!",
+                null
+              ]
+            ]
+          }
+        }
+      }
+    }
+  }
+}

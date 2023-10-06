@@ -21,12 +21,16 @@ impl Map {
         Self(layers)
     }
 
-    pub fn get(&self, i: usize) -> Result<&MapLayer, MapError> {
+    pub fn get_layer(&self, i: usize) -> Result<&MapLayer, MapError> {
         if i >= self.0.len() {
             return Err(MapError::OutOfBounds);
         }
-
         return Ok(&self.0[i]);
+    }
+
+    pub fn get(&self, location: MapLocation) -> Result<&Tile, MapError> {
+        self.get_layer(location.map_layer)
+            .and_then(|layer| layer.get_from_location(location.get_tile_location()))
     }
 }
 
@@ -56,8 +60,16 @@ impl MapLayer {
         Self::new(vec![vec![tile; height]; width])
     }
 
-    pub fn get(&self, i: usize, j: usize) -> &Tile {
-        &self.0[i][j]
+    pub fn get(&self, i: usize, j: usize) -> Result<&Tile, MapError> {
+        if !self.is_in_bounds(i, j) {
+            Err(MapError::OutOfBounds)
+        } else {
+            Ok(&self.0[i][j])
+        }
+    }
+
+    pub fn get_from_location(&self, location: TileLocation) -> Result<&Tile, MapError> {
+        self.get(location.x() as usize, location.y() as usize)
     }
 
     pub fn size(&self) -> usize {
@@ -117,6 +129,10 @@ impl MapLayer {
             self.0[0][j] = tile.clone();
             self.0[width - 1][j] = tile.clone();
         })
+    }
+
+    fn is_in_bounds(&self, i: usize, j: usize) -> bool {
+        (i >= self.width()) || (j >= self.height())
     }
 }
 
@@ -226,7 +242,7 @@ impl MapLocation {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct TileLocation {
     pub i: i32,
     pub j: i32,

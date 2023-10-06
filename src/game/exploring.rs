@@ -4,9 +4,11 @@ use super::{
     constants::*,
     events::{CameraMovementEvent, MovementEvent},
     map::{MapLayer, SurfaceTile, Tile},
+    npc::NPCComponent,
     particle::{ParticleComponent, ParticleEmitterComponent, ParticleTiming},
     player::{LocationComponent, PlayerComponent},
     resources::{GameState, LoadedFont, LoadedMap},
+    ui_state::{AsciiTileAppearance, TileAppearance, TileGrid},
 };
 
 pub struct ExploringPlugin;
@@ -14,9 +16,14 @@ pub struct ExploringPlugin;
 impl Plugin for ExploringPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(GameState::LoadingMap), load_map_system)
+            .add_systems(OnEnter(GameState::Exploring), spawn_map)
             .add_systems(
                 Update,
                 move_player_system.run_if(in_state(GameState::Exploring)),
+            )
+            .add_systems(
+                Update,
+                update_positions.run_if(in_state(GameState::Exploring)),
             )
             .add_systems(
                 Update,
@@ -37,6 +44,17 @@ impl Plugin for ExploringPlugin {
     }
 }
 
+// Resources
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Resource)]
+pub struct ShouldSpawn(pub bool);
+
+// End Resources
+
+// Events
+
+// End Events
+
 // Systems
 
 fn load_map_system(mut commands: Commands) {
@@ -52,6 +70,7 @@ fn load_map_system(mut commands: Commands) {
 
     commands.insert_resource(LoadedMap(map_layer.into()));
     commands.insert_resource(NextState(Some(GameState::Exploring)));
+    commands.insert_resource(ShouldSpawn(true));
 }
 
 fn move_player_system(
@@ -65,6 +84,14 @@ fn move_player_system(
     }
 }
 
+fn update_positions(mut query: Query<(&LocationComponent, &mut Transform)>) {
+    for (location, mut transform) in query.iter_mut() {
+        let screen_coordinates =
+            TileGrid::tile_to_world_coordinates(location.0.get_tile_location());
+        *transform = Transform::from_translation(screen_coordinates.extend(0.));
+    }
+}
+
 fn move_camera_system(
     mut camera_movement_event_reader: EventReader<CameraMovementEvent>,
     mut query: Query<&mut Transform, With<Camera2d>>,
@@ -72,8 +99,64 @@ fn move_camera_system(
     let mut transform = query.single_mut();
     for event in camera_movement_event_reader.iter() {
         transform.translation += event.0.as_vector().extend(0.) * CAMERA_MOVE_SPEED;
-        info!("New transform: {:?}", transform.translation);
     }
+}
+
+fn spawn_map(
+    mut commands: Commands,
+    player_query: Query<(Entity, &LocationComponent), With<PlayerComponent>>,
+    npc_query: Query<(Entity, &LocationComponent), With<NPCComponent>>,
+    map: Res<LoadedMap>,
+    font: Res<LoadedFont>,
+    mut should_spawn: ResMut<ShouldSpawn>,
+) {
+    if !should_spawn.0 {
+        info!("Ignoring spawn_map.");
+        return;
+    }
+
+    info!("Spawning map.");
+    let (player_entity, player_location) = player_query.single();
+
+    let map_layer = map
+        .0
+        .get_layer(player_location.0.get_map_layer())
+        .expect("Player's layer must exist.");
+
+    let tile_grid = TileGrid::from_map_layer(map_layer.clone());
+    tile_grid.render(&mut commands, font.0.clone());
+
+    map_layer
+        .as_location_and_tile_vector()
+        .into_iter()
+        .for_each(|(location, tile)| {
+            if let Some(particle_spec) = tile.get_surface().get_particle_spec() {
+                particle_spec.render(&mut commands, font.0.clone(), location);
+            };
+        });
+
+    let player_tile = TileAppearance::Ascii(AsciiTileAppearance::from('@'));
+    let player_sprite = player_tile.render(
+        &mut commands
+            .get_entity(player_entity)
+            .expect("Player entity must exist if it was returned from the query."),
+        font.0.clone(),
+        TileGrid::tile_to_world_coordinates(player_location.0.get_tile_location()),
+    );
+    commands.entity(player_sprite).insert(PlayerSprite);
+
+    for (entity, location) in npc_query.iter() {
+        let npc_tile = TileAppearance::Ascii('&'.into());
+        let _npc_sprite = npc_tile.render(
+            &mut commands
+                .get_entity(entity)
+                .expect("NPC Entity must exist if it was returned from the query."),
+            font.0.clone(),
+            TileGrid::tile_to_world_coordinates(location.0.get_tile_location()),
+        );
+    }
+
+    should_spawn.0 = false;
 }
 
 fn emit_particles_system(
@@ -142,7 +225,6 @@ fn despawn_particles_offscreen_system(
 
     // Get the scale of the camera.
     let camera_scale = projection.scale;
-    info!("camera scale: {}", camera_scale);
 
     // Adjust window dimensions based on camera scale.
     let adjusted_width = window_width * camera_scale;
@@ -158,7 +240,6 @@ fn despawn_particles_offscreen_system(
             || position_relative.y < -adjusted_height
             || position_relative.y > adjusted_height
         {
-            info!("Despawning particle");
             commands.entity(entity).despawn_recursive();
         }
     }
@@ -167,6 +248,8 @@ fn despawn_particles_offscreen_system(
 // End Systems
 
 // Components
+#[derive(Component, Clone, Copy)]
+struct PlayerSprite;
 
 // End Components
 

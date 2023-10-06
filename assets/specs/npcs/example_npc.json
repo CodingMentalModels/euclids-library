@@ -1,0 +1,1 @@
+{"name":"Example NPC","location":{"map_layer":0,"tile_location":{"i":4,"j":5}},"dialog":{"NPCDialog":{"speaker":"Example NPC","contents":"I'm an NPC.","next":{"NPCDialog":{"speaker":"Example NPC","contents":"Hear me roar!","next":{"PlayerDialog":[["I couldn't hear that.",null],["Ahhhhh!",null]]}}}}}}
