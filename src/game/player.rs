@@ -9,6 +9,9 @@ use super::map::TileLocation;
 #[derive(Component, Clone, Copy)]
 pub struct PlayerComponent;
 
+#[derive(Component, Clone)]
+pub struct BodyComponent(pub BodyPartTreeNode);
+
 #[derive(Component, Clone, Copy, PartialEq)]
 pub struct LocationComponent(pub MapLocation);
 
@@ -41,8 +44,9 @@ impl Player {
     pub fn spawn(&self, commands: &mut Commands) -> Entity {
         commands
             .spawn_empty()
-            .insert(LocationComponent(self.location))
             .insert(PlayerComponent)
+            .insert(LocationComponent(self.location))
+            .insert(BodyComponent(BodyPartTreeNode::new_humanoid()))
             .id()
     }
 }
