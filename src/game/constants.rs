@@ -2,6 +2,12 @@
 pub const NPC_DIRECTORY: &str = "assets/specs/npcs/";
 
 // Game Parameters
+pub const DEFAULT_BODY_SIZE: u8 = 40;
+pub const DEFAULT_HEAD_SIZE: u8 = 10;
+pub const DEFAULT_ARM_SIZE: u8 = 15;
+pub const DEFAULT_LEG_SIZE: u8 = 20;
+pub const DEFAULT_HAND_SIZE: u8 = 5;
+pub const DEFAULT_FOOT_SIZE: u8 = 5;
 
 // UI
 
