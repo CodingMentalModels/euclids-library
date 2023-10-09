@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use bevy::prelude::*;
+
 use rand::rngs::ThreadRng;
 use rand::Rng;
 use serde::Deserialize;
@@ -58,8 +59,64 @@ impl Player {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Damage {
-    state_transition_probabilities: HashMap<BodyPartState, Probability>,
+    state_transition_probabilities: HashMap<(BodyPartState, BodyPartState), Probability>,
     status_effect_probabilities: HashMap<BodyPartStatusEffect, Probability>,
+}
+
+impl Damage {
+    pub fn new(
+        state_transition_probabilities: HashMap<(BodyPartState, BodyPartState), Probability>,
+        status_effect_probabilities: HashMap<BodyPartStatusEffect, Probability>,
+    ) -> Result<Self, ProbabilityError> {
+        let totals_by_initial = state_transition_probabilities
+            .iter()
+            .fold(
+                HashMap::new(),
+                |(acc, ((initial_state, final_state), p))| match acc
+                    .get(&(initial_state, final_state))
+                {
+                    None => {
+                        acc.insert((initial_state, final_state), p);
+                    }
+                    Some(previous_p) => {
+                        acc.insert((initial_state, final_state), p + previous_p);
+                    }
+                },
+            )
+            .collect::<Vec<_>>();
+        Ok(Self {
+            state_transition_probabilities,
+            status_effect_probabilities,
+        })
+    }
+
+    pub fn get_states_and_probabilities_from(
+        &self,
+        initial_state: BodyPartState,
+    ) -> Result<(Vec<BodyPartState>, Vec<Probability>), ProbabilityError> {
+        let final_states = self
+            .state_transition_probabilities
+            .iter()
+            .filter(|((i, f), _p)| (initial_state == *i) && (*f != initial_state))
+            .map(|((_i, f), _p)| f)
+            .cloned()
+            .collect::<Vec<_>>();
+        let probabilities = final_states
+            .iter()
+            .map(|f| {
+                self.state_transition_probabilities
+                    .get(&(initial_state, *f))
+                    .expect("This key was generated from the hashmap itself.")
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+
+        let remaining_probabilities =
+            Probability::new(100 - probabilities.iter().fold(0, |acc, elt| 0 + elt.0))?;
+        final_states.push(initial_state);
+        probabilities.push(remaining_probabilities);
+        Ok((final_states, probabilities))
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -152,7 +209,12 @@ impl BodyPartTreeNode {
     }
 
     pub fn take_damage(&mut self, rng: &mut ThreadRng, damage: Damage) {
-        for ((initial_state, final_state), probability) in damage.get_state_change_probabilities() {
+        let (final_states, probabilities) =
+            damage.get_states_and_probabilities_from(self.get_state());
+
+        for ((initial_state, final_state), probability) in
+            damage.get_states_and_probabilities_from()
+        {
             if initial_state == self.get_state() {
                 // Handle state transition
                 unimplemented!();
@@ -348,6 +410,10 @@ impl Probability {
             return Err(ProbabilityError::OutOfBounds);
         }
         Ok(Self(p))
+    }
+
+    pub fn one() -> Self {
+        Self(100)
     }
 
     pub fn from_f32(p: f32) -> Result<Self, ProbabilityError> {
