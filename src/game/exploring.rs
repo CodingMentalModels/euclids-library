@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use super::{
     constants::*,
-    events::{CameraMovementEvent, MovementEvent},
+    events::{CameraMovementEvent, MovementEvent, OpenMenuEvent},
     map::{MapLayer, SurfaceTile, Tile},
     npc::NPCComponent,
     particle::{ParticleComponent, ParticleEmitterComponent, ParticleTiming},

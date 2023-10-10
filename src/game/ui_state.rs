@@ -14,6 +14,17 @@ pub struct InteractingUIState {
     pub interacting_state: InteractingState,
 }
 
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Resource)]
+pub struct MenuUIState {
+    options: Vec<String>,
+}
+
+impl MenuUIState {
+    pub fn new(options: Vec<String>) -> Self {
+        Self { options }
+    }
+}
+
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct TileGrid {
     grid: Vec<Vec<TileAppearance>>,

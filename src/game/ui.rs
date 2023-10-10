@@ -1,3 +1,5 @@
+use std::unimplemented;
+
 use bevy::{asset::LoadState, prelude::*};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use bevy_mod_raycast::RaycastSource;
@@ -9,9 +11,7 @@ use crate::game::resources::*;
 use super::dialog::Dialog;
 use super::events::{CameraZoomEvent, UpdateUIEvent};
 use super::interacting::{update_interacting_ui_state_system, Interactable, InteractingState};
-use super::ui_state::{
-    AsciiTileAppearance, ExploringUIState, InteractingUIState, TileAppearance, TileGrid,
-};
+use super::ui_state::{InteractingUIState, MenuUIState};
 
 pub struct UIPlugin;
 
@@ -30,7 +30,8 @@ impl Plugin for UIPlugin {
                 render_interacting_ui
                     .after(update_interacting_ui_state_system)
                     .run_if(in_state(GameState::Interacting)),
-            );
+            )
+            .add_systems(Update, render_menu_ui.run_if(in_state(GameState::Menu)));
 
         app.insert_resource(MaterialCache::empty());
     }
@@ -78,11 +79,7 @@ fn update_camera_zoom(
     }
 }
 
-fn render_interacting_ui(
-    mut commands: Commands,
-    mut contexts: EguiContexts,
-    mut ui_state: ResMut<InteractingUIState>,
-) {
+fn render_interacting_ui(mut contexts: EguiContexts, ui_state: ResMut<InteractingUIState>) {
     let ctx = contexts.ctx_mut();
     match &ui_state.interacting_state {
         InteractingState::ChoosingDirection => {
@@ -116,6 +113,10 @@ fn render_interacting_ui(
             }
         },
     }
+}
+
+fn render_menu_ui(mut contexts: EguiContexts, ui_state: ResMut<MenuUIState>) {
+    panic!("Render menu");
 }
 
 // Components
