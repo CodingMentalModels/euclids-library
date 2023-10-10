@@ -118,9 +118,11 @@ fn render_interacting_ui(mut contexts: EguiContexts, ui_state: ResMut<Interactin
 
 fn render_menu_ui(mut contexts: EguiContexts, ui_state: ResMut<MenuUIState>) {
     let ctx = contexts.ctx_mut();
+    let size = egui::Vec2::new(MENU_WIDTH, MENU_HEIGHT);
     egui::Window::new("menu-area")
         .anchor(Align2::CENTER_TOP, egui::Vec2::new(0., 100.))
-        .fixed_size(egui::Vec2::new(MENU_WIDTH, MENU_HEIGHT))
+        .resizable(false)
+        .fixed_size(size)
         .frame(Frame::none().fill(Color32::BLACK))
         .title_bar(false)
         .show(ctx, |ui| {
