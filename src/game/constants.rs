@@ -10,6 +10,7 @@ pub const DEFAULT_HAND_SIZE: u8 = 5;
 pub const DEFAULT_FOOT_SIZE: u8 = 5;
 
 // UI
+pub const DEFAULT_FONT_SIZE: f32 = 24.;
 
 // Map
 pub const DEFAULT_MAP_WIDTH_IN_TILES: usize = 50;

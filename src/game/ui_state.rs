@@ -1,5 +1,6 @@
 use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
+use egui::{Color32, RichText};
 use serde::{Deserialize, Serialize};
 
 use super::constants::*;
@@ -22,6 +23,13 @@ pub struct MenuUIState {
 impl MenuUIState {
     pub fn new(options: Vec<String>) -> Self {
         Self { options }
+    }
+
+    pub fn to_text(&self) -> RichText {
+        RichText::new(self.options.join("\n"))
+            .background_color(Color32::BLACK)
+            .color(Color32::WHITE)
+            .size(DEFAULT_FONT_SIZE)
     }
 }
 
