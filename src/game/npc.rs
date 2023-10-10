@@ -5,7 +5,7 @@ use super::{
     dialog::Dialog,
     interacting::{Interactable, InteractableComponent},
     map::MapLocation,
-    player::LocationComponent,
+    player::{BodyComponent, BodyPartTreeNode, LocationComponent},
 };
 
 // Components
@@ -35,6 +35,7 @@ impl NPC {
         entity_commands
             .insert(NPCComponent)
             .insert(LocationComponent(self.location))
+            .insert(BodyComponent(BodyPartTreeNode::new_humanoid()))
             .insert(InteractableComponent(Interactable::Dialog(
                 self.dialog.clone(),
             )))
