@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 use bevy::prelude::*;
 
@@ -68,32 +69,36 @@ impl Damage {
         state_transition_probabilities: HashMap<(BodyPartState, BodyPartState), Probability>,
         status_effect_probabilities: HashMap<BodyPartStatusEffect, Probability>,
     ) -> Result<Self, ProbabilityError> {
-        let totals_by_initial = state_transition_probabilities
-            .iter()
-            .fold(
-                HashMap::new(),
-                |(acc, ((initial_state, final_state), p))| match acc
-                    .get(&(initial_state, final_state))
-                {
-                    None => {
-                        acc.insert((initial_state, final_state), p);
-                    }
-                    Some(previous_p) => {
-                        acc.insert((initial_state, final_state), p + previous_p);
-                    }
+        // Check that totals by inital don't overflow
+        let _totals_by_initial: HashMap<BodyPartState, Probability> =
+            state_transition_probabilities.iter().fold(
+                Ok(HashMap::new()),
+                |acc, ((initial_state, _final_state), p)| {
+                    acc.and_then(|mut a| {
+                        match a.get(initial_state) {
+                            None => {
+                                a.insert(*initial_state, *p);
+                            }
+                            Some(previous_p) => {
+                                a.insert(*initial_state, previous_p.add(p)?);
+                            }
+                        };
+
+                        Ok(a)
+                    })
                 },
-            )
-            .collect::<Vec<_>>();
+            )?;
+
         Ok(Self {
             state_transition_probabilities,
             status_effect_probabilities,
         })
     }
 
-    pub fn get_states_and_probabilities_from(
+    pub fn get_state_transitions_from(
         &self,
         initial_state: BodyPartState,
-    ) -> Result<(Vec<BodyPartState>, Vec<Probability>), ProbabilityError> {
+    ) -> Result<HashMap<BodyPartState, Probability>, ProbabilityError> {
         let final_states = self
             .state_transition_probabilities
             .iter()
@@ -101,21 +106,23 @@ impl Damage {
             .map(|((_i, f), _p)| f)
             .cloned()
             .collect::<Vec<_>>();
-        let probabilities = final_states
+        let mut state_transitions = final_states
             .iter()
             .map(|f| {
-                self.state_transition_probabilities
-                    .get(&(initial_state, *f))
-                    .expect("This key was generated from the hashmap itself.")
+                (
+                    *f,
+                    *self
+                        .state_transition_probabilities
+                        .get(&(initial_state, *f))
+                        .expect("This key was generated from the hashmap itself."),
+                )
             })
-            .cloned()
-            .collect::<Vec<_>>();
+            .collect::<HashMap<_, _>>();
 
         let remaining_probabilities =
-            Probability::new(100 - probabilities.iter().fold(0, |acc, elt| 0 + elt.0))?;
-        final_states.push(initial_state);
-        probabilities.push(remaining_probabilities);
-        Ok((final_states, probabilities))
+            Probability::new(100 - state_transitions.iter().fold(0, |acc, elt| acc + (elt.1).0))?;
+        state_transitions.insert(initial_state, remaining_probabilities);
+        Ok(state_transitions)
     }
 }
 
@@ -198,37 +205,36 @@ impl BodyPartTreeNode {
 
     pub fn take_damage_child(&mut self, rng: &mut ThreadRng, damage: Damage) {
         let children_size = self.get_total_children_size() as f32;
-        let choice = Probability::choose(
+        let choice: usize = Probability::choose(
             rng,
             self.children
                 .iter()
-                .map(|child| (child.get_size() as f32) / children_size)
+                .enumerate()
+                .map(|(child_idx, child)| {
+                    (
+                        child_idx,
+                        Probability::from_f32((child.get_size() as f32) / children_size)
+                            .expect("Given the computation, this has to be ok."),
+                    )
+                })
                 .collect(),
-        );
+        )
+        .expect("Given the computation, this has to be ok.");
         self.children[choice].take_damage_recursive(rng, damage);
     }
 
     pub fn take_damage(&mut self, rng: &mut ThreadRng, damage: Damage) {
-        let (final_states, probabilities) =
-            damage.get_states_and_probabilities_from(self.get_state());
+        let state_transitions = damage
+            .get_state_transitions_from(self.get_state())
+            .expect("State transitions are checked when Damage is instantiated.");
 
-        for ((initial_state, final_state), probability) in
-            damage.get_states_and_probabilities_from()
-        {
-            if initial_state == self.get_state() {
-                // Handle state transition
-                unimplemented!();
-            }
-        }
+        self.body_part.state = Probability::choose(rng, state_transitions)
+            .expect("State transitions are checked when Damage is instantiated.");
 
-        for (status_effect, probability) in damage.get_status_effect_probabilities() {
-            if self.has_status_effect(status_effect) == PartialBool::False {
-                if probability.roll(rng) {
-                    // Handle status effect
-                    unimplemented!();
-                }
-            }
-        }
+        self.body_part.statuses.insert(
+            Probability::choose(rng, damage.status_effect_probabilities)
+                .expect("State transitions are checked when Damage is instantiated."),
+        );
     }
 
     pub fn has_status_effect(&self, status_effect: BodyPartStatusEffect) -> PartialBool {
@@ -266,13 +272,17 @@ impl BodyPartTreeNode {
     pub fn has_children(&self) -> bool {
         self.children.len() != 0
     }
+
+    pub fn get_state(&self) -> BodyPartState {
+        self.body_part.state
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BodyPart {
     body_part_type: BodyPartType,
     state: BodyPartState,
-    statuses: Vec<BodyPartStatusEffect>,
+    statuses: HashSet<BodyPartStatusEffect>,
 }
 
 impl From<BodyPartType> for BodyPart {
@@ -285,7 +295,7 @@ impl BodyPart {
     pub fn new(
         body_part_type: BodyPartType,
         state: BodyPartState,
-        statuses: Vec<BodyPartStatusEffect>,
+        statuses: HashSet<BodyPartStatusEffect>,
     ) -> Self {
         Self {
             body_part_type,
@@ -295,12 +305,12 @@ impl BodyPart {
     }
 
     pub fn new_empty(body_part_type: BodyPartType) -> Self {
-        Self::new(body_part_type, BodyPartState::Okay, Vec::new())
+        Self::new(body_part_type, BodyPartState::Okay, HashSet::new())
     }
 
     pub fn new_with_status_effects(
         body_part_type: BodyPartType,
-        status_effects: Vec<BodyPartStatusEffect>,
+        status_effects: HashSet<BodyPartStatusEffect>,
     ) -> Self {
         Self::new(body_part_type, BodyPartState::Okay, status_effects)
     }
@@ -423,6 +433,34 @@ impl Probability {
         Ok(Self((p * 100.) as u8))
     }
 
+    pub fn add(&self, rhs: &Probability) -> Result<Self, ProbabilityError> {
+        Self::new(self.0 + rhs.0)
+    }
+
+    pub fn choose<T: Clone>(
+        rng: &mut ThreadRng,
+        choices: HashMap<T, Probability>,
+    ) -> Result<T, ProbabilityError> {
+        if choices.len() == 0 {
+            panic!("choose() requires choices to contain at least one value.");
+        }
+
+        let total_prob: u8 = choices.values().map(|p| p.0).sum();
+        let _ = Probability::new(total_prob)?;
+        // Ensure that total probability is still a probability.
+
+        let mut rand_choice = rng.gen_range(0..=total_prob);
+
+        for (item, prob) in choices.iter() {
+            if rand_choice <= prob.0 {
+                return Ok(item.clone());
+            }
+            rand_choice -= prob.0;
+        }
+
+        panic!("Unreachable -- the sum is calculated within the function.");
+    }
+
     pub fn roll(&self, rng: &mut ThreadRng) -> bool {
         let roll: f32 = rng.gen();
         let roll_u8 = (roll * 100.) as u8;
@@ -451,7 +489,7 @@ mod tests {
 
         let head: BodyPartTreeNode = BodyPart::new_with_status_effects(
             BodyPartType::Head,
-            vec![BodyPartStatusEffect::Blind],
+            vec![BodyPartStatusEffect::Blind].into_iter().collect(),
         )
         .into();
 
