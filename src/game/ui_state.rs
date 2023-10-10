@@ -27,7 +27,6 @@ impl MenuUIState {
 
     pub fn to_text(&self) -> RichText {
         RichText::new(self.options.join("\n"))
-            .background_color(Color32::BLACK)
             .color(Color32::WHITE)
             .size(DEFAULT_FONT_SIZE)
     }

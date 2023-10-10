@@ -3,7 +3,7 @@ use std::unimplemented;
 use bevy::{asset::LoadState, prelude::*};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use bevy_mod_raycast::RaycastSource;
-use egui::Align2;
+use egui::{Align2, Color32, Frame};
 
 use crate::game::constants::*;
 use crate::game::input::MouseoverRaycastSet;
@@ -118,8 +118,11 @@ fn render_interacting_ui(mut contexts: EguiContexts, ui_state: ResMut<Interactin
 
 fn render_menu_ui(mut contexts: EguiContexts, ui_state: ResMut<MenuUIState>) {
     let ctx = contexts.ctx_mut();
-    egui::Area::new("menu-area")
+    egui::Window::new("menu-area")
         .anchor(Align2::CENTER_TOP, egui::Vec2::new(0., 100.))
+        .fixed_size(egui::Vec2::new(MENU_WIDTH, MENU_HEIGHT))
+        .frame(Frame::none().fill(Color32::BLACK))
+        .title_bar(false)
         .show(ctx, |ui| {
             ui.label(ui_state.to_text());
         });

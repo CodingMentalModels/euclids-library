@@ -11,6 +11,8 @@ pub const DEFAULT_FOOT_SIZE: u8 = 5;
 
 // UI
 pub const DEFAULT_FONT_SIZE: f32 = 24.;
+pub const MENU_WIDTH: f32 = 680.;
+pub const MENU_HEIGHT: f32 = 420.;
 
 // Map
 pub const DEFAULT_MAP_WIDTH_IN_TILES: usize = 50;
