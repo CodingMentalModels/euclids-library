@@ -121,11 +121,13 @@ fn render_menu_ui(mut contexts: EguiContexts, ui_state: ResMut<MenuUIState>) {
     let size = egui::Vec2::new(MENU_WIDTH, MENU_HEIGHT);
     egui::Window::new("menu-area")
         .anchor(Align2::CENTER_TOP, egui::Vec2::new(0., 100.))
-        .resizable(false)
         .fixed_size(size)
         .frame(Frame::none().fill(Color32::BLACK))
         .title_bar(false)
         .show(ctx, |ui| {
+            //  Workaround for https://users.rust-lang.org/t/egui-questions-regarding-window-size/88753/3
+            ui.set_width(ui.available_width());
+            ui.set_height(ui.available_height());
             ui.label(ui_state.to_text());
         });
 }
