@@ -1,4 +1,5 @@
 pub mod assets;
+pub mod character;
 pub mod constants;
 pub mod dialog;
 pub mod events;

@@ -1,12 +1,13 @@
 use bevy::prelude::*;
 
+use super::character::LocationComponent;
 use super::{
     constants::*,
-    events::{CameraMovementEvent, MovementEvent, OpenMenuEvent},
+    events::{CameraMovementEvent, MovementEvent},
     map::{MapLayer, SurfaceTile, Tile},
     npc::NPCComponent,
     particle::{ParticleComponent, ParticleEmitterComponent, ParticleTiming},
-    player::{LocationComponent, PlayerComponent},
+    player::PlayerComponent,
     resources::{GameState, LoadedFont, LoadedMap},
     ui_state::{AsciiTileAppearance, TileAppearance, TileGrid},
 };

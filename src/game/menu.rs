@@ -1,10 +1,8 @@
 use bevy::prelude::*;
 
+use super::character::BodyComponent;
 use super::{
-    events::OpenMenuEvent,
-    player::{BodyComponent, PlayerComponent},
-    resources::GameState,
-    ui_state::MenuUIState,
+    events::OpenMenuEvent, player::PlayerComponent, resources::GameState, ui_state::MenuUIState,
 };
 
 pub struct MenuPlugin;
