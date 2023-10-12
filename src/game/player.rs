@@ -276,6 +276,27 @@ impl BodyPartTreeNode {
     pub fn get_state(&self) -> BodyPartState {
         self.body_part.state
     }
+
+    pub fn get_menu_text(&self) -> Vec<String> {
+        // TODO Implement in terms of LayoutJob in order to get multiple colors, etc.
+        let mut own_text = vec![self.body_part.get_menu_text()];
+        if self.has_children() {
+            let mut children_text = self
+                .children
+                .iter()
+                .map(|child| {
+                    child
+                        .get_menu_text()
+                        .into_iter()
+                        .map(|line| format!("{}{}", MENU_INDENTATION, line))
+                        .collect::<Vec<_>>()
+                })
+                .flatten()
+                .collect();
+            own_text.append(&mut children_text);
+        }
+        own_text
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -329,6 +350,29 @@ impl BodyPart {
             PartialBool::NotApplicable
         }
     }
+
+    pub fn get_menu_text(&self) -> String {
+        let head = format!(
+            "{} {} {}",
+            self.body_part_type.to_string(),
+            EM_DASH,
+            self.state.to_string(),
+        );
+        if self.has_any_status_effect() {
+            return format!(
+                "{} {} {}",
+                head,
+                EM_DASH,
+                BodyPartStatusEffect::pretty_print_set(&self.statuses.clone())
+            );
+        } else {
+            return head;
+        }
+    }
+
+    pub fn has_any_status_effect(&self) -> bool {
+        self.statuses.len() != 0
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -351,6 +395,18 @@ impl BodyPartType {
             Self::Leg,
             Self::Foot,
         ]
+    }
+
+    pub fn to_string(&self) -> String {
+        match self {
+            Self::Body => "Body",
+            Self::Head => "Head",
+            Self::Arm => "Arm",
+            Self::Hand => "Hand",
+            Self::Leg => "Leg",
+            Self::Foot => "Foot",
+        }
+        .to_string()
     }
 
     pub fn get_size(&self) -> u8 {
@@ -376,6 +432,17 @@ pub enum BodyPartState {
     Destroyed,
 }
 
+impl BodyPartState {
+    pub fn to_string(&self) -> String {
+        match self {
+            Self::Okay => "Okay",
+            Self::Nonfunctional => "Nonfunctional",
+            Self::Destroyed => "Destroyed",
+        }
+        .to_string()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum BodyPartStatusEffect {
     Blind,
@@ -391,6 +458,24 @@ impl BodyPartStatusEffect {
             Self::Blind | Self::Deaf => vec![BodyPartType::Head],
             _ => BodyPartType::all(),
         }
+    }
+
+    pub fn pretty_print_set(v: &HashSet<Self>) -> String {
+        // TODO Handle overflow
+        let mut to_return = v.iter().map(|e| e.to_string()).collect::<Vec<_>>();
+        to_return.sort();
+        to_return.join(", ")
+    }
+
+    pub fn to_string(&self) -> String {
+        match self {
+            Self::Blind => "Blind",
+            Self::Deaf => "Deaf",
+            Self::Bleeding => "Bleeding",
+            Self::Infected => "Infected",
+            Self::Cancerous => "Cancerous",
+        }
+        .to_string()
     }
 }
 

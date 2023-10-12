@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use super::{map::TileLocation, resources::GameState};
+use super::{map::TileLocation, menu::MenuType, resources::GameState};
 
 pub struct EventsPlugin;
 
@@ -30,6 +30,9 @@ fn change_state_system(
 // Events
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
 pub struct UpdateUIEvent;
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
+pub struct OpenMenuEvent(pub MenuType);
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
 pub enum ProgressPromptEvent {

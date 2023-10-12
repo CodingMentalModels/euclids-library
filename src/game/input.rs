@@ -5,8 +5,9 @@ use bevy_mod_raycast::{
 
 use super::events::{
     CameraMovementEvent, CameraZoomEvent, ChooseDirectionEvent, Direction, MovementEvent,
-    ProgressPromptEvent, StateChangeEvent,
+    OpenMenuEvent, ProgressPromptEvent, StateChangeEvent,
 };
+use super::menu::MenuType;
 use super::resources::GameState;
 
 pub struct InputPlugin;
@@ -14,6 +15,7 @@ pub struct InputPlugin;
 impl Plugin for InputPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<PauseUnpauseEvent>()
+            .add_event::<OpenMenuEvent>()
             .add_event::<CameraMovementEvent>()
             .add_event::<CameraZoomEvent>()
             .add_event::<MovementEvent>()
@@ -48,6 +50,7 @@ pub fn input_system(
     state_change_event_writer: EventWriter<StateChangeEvent>,
     camera_movement_event_writer: EventWriter<CameraMovementEvent>,
     zoom_event_writer: EventWriter<CameraZoomEvent>,
+    open_menu_event_writer: EventWriter<OpenMenuEvent>,
     movement_event_writer: EventWriter<MovementEvent>,
     choose_direction_event_writer: EventWriter<ChooseDirectionEvent>,
     progress_prompt_event_writer: EventWriter<ProgressPromptEvent>,
@@ -62,6 +65,7 @@ pub fn input_system(
             handle_camera_zoom(&keyboard_input, zoom_event_writer);
             handle_movement(&keyboard_input, movement_event_writer);
             handle_interact(&keyboard_input, state_change_event_writer);
+            handle_open_menu(&keyboard_input, open_menu_event_writer);
         }
         GameState::Interacting => {
             handle_progress_prompt(&keyboard_input, progress_prompt_event_writer);
@@ -71,6 +75,13 @@ pub fn input_system(
                 GameState::Exploring,
             );
             handle_choose_direction(&keyboard_input, choose_direction_event_writer);
+        }
+        GameState::Menu => {
+            handle_exit(
+                &keyboard_input,
+                state_change_event_writer,
+                GameState::Exploring,
+            );
         }
         _ => {}
     }
@@ -117,7 +128,9 @@ fn handle_camera_zoom(
     keyboard_input: &Res<Input<KeyCode>>,
     mut zoom_event_writer: EventWriter<CameraZoomEvent>,
 ) {
-    if keyboard_input.just_pressed(KeyCode::Equals) {
+    if keyboard_input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight])
+        && keyboard_input.just_pressed(KeyCode::Equals)
+    {
         zoom_event_writer.send(CameraZoomEvent(1));
     }
 
@@ -150,6 +163,17 @@ fn handle_interact(
 ) {
     if keyboard_input.just_pressed(KeyCode::Space) {
         state_change_event_writer.send(StateChangeEvent(GameState::Interacting));
+    }
+}
+
+fn handle_open_menu(
+    keyboard_input: &Res<Input<KeyCode>>,
+    mut open_menu_event_writer: EventWriter<OpenMenuEvent>,
+) {
+    if keyboard_input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight])
+        && keyboard_input.just_pressed(KeyCode::Key2)
+    {
+        open_menu_event_writer.send(OpenMenuEvent(MenuType::Character));
     }
 }
 

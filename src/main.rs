@@ -8,6 +8,7 @@ use game::events::EventsPlugin;
 use game::exploring::ExploringPlugin;
 use game::input::InputPlugin;
 use game::interacting::InteractingPlugin;
+use game::menu::MenuPlugin;
 use game::pause::PausePlugin;
 use game::world::WorldPlugin;
 
@@ -29,6 +30,7 @@ fn main() {
         .add_plugins(WorldPlugin)
         .add_plugins(ExploringPlugin)
         .add_plugins(InteractingPlugin)
+        .add_plugins(MenuPlugin)
         .add_state::<GameState>()
         .run();
 }

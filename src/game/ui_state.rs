@@ -1,5 +1,6 @@
 use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
+use egui::{Color32, RichText};
 use serde::{Deserialize, Serialize};
 
 use super::constants::*;
@@ -12,6 +13,23 @@ pub struct ExploringUIState {}
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Resource)]
 pub struct InteractingUIState {
     pub interacting_state: InteractingState,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Resource)]
+pub struct MenuUIState {
+    options: Vec<String>,
+}
+
+impl MenuUIState {
+    pub fn new(options: Vec<String>) -> Self {
+        Self { options }
+    }
+
+    pub fn to_text(&self) -> RichText {
+        RichText::new(self.options.join("\n"))
+            .color(Color32::WHITE)
+            .size(DEFAULT_FONT_SIZE)
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]

@@ -1,6 +1,9 @@
+use std::unimplemented;
+
 use bevy::{asset::LoadState, prelude::*};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use bevy_mod_raycast::RaycastSource;
+use egui::{Align2, Color32, Frame};
 
 use crate::game::constants::*;
 use crate::game::input::MouseoverRaycastSet;
@@ -9,9 +12,7 @@ use crate::game::resources::*;
 use super::dialog::Dialog;
 use super::events::{CameraZoomEvent, UpdateUIEvent};
 use super::interacting::{update_interacting_ui_state_system, Interactable, InteractingState};
-use super::ui_state::{
-    AsciiTileAppearance, ExploringUIState, InteractingUIState, TileAppearance, TileGrid,
-};
+use super::ui_state::{InteractingUIState, MenuUIState};
 
 pub struct UIPlugin;
 
@@ -30,7 +31,8 @@ impl Plugin for UIPlugin {
                 render_interacting_ui
                     .after(update_interacting_ui_state_system)
                     .run_if(in_state(GameState::Interacting)),
-            );
+            )
+            .add_systems(Update, render_menu_ui.run_if(in_state(GameState::Menu)));
 
         app.insert_resource(MaterialCache::empty());
     }
@@ -78,11 +80,7 @@ fn update_camera_zoom(
     }
 }
 
-fn render_interacting_ui(
-    mut commands: Commands,
-    mut contexts: EguiContexts,
-    mut ui_state: ResMut<InteractingUIState>,
-) {
+fn render_interacting_ui(mut contexts: EguiContexts, ui_state: ResMut<InteractingUIState>) {
     let ctx = contexts.ctx_mut();
     match &ui_state.interacting_state {
         InteractingState::ChoosingDirection => {
@@ -116,6 +114,30 @@ fn render_interacting_ui(
             }
         },
     }
+}
+
+fn render_menu_ui(mut contexts: EguiContexts, ui_state: ResMut<MenuUIState>) {
+    let ctx = contexts.ctx_mut();
+    let size = egui::Vec2::new(ctx.screen_rect().width(), ctx.screen_rect().height())
+        * MENU_TO_SCREEN_RATIO;
+    egui::Window::new("menu-area")
+        .anchor(
+            Align2::CENTER_TOP,
+            egui::Vec2::new(
+                0.,
+                (ctx.screen_rect().height() * (1. - MENU_TO_SCREEN_RATIO) / 2.),
+            ),
+        )
+        .fixed_size(size)
+        .frame(Frame::none().fill(Color32::BLACK))
+        .title_bar(false)
+        .show(ctx, |ui| {
+            //  Workaround for https://users.rust-lang.org/t/egui-questions-regarding-window-size/88753/3
+            ui.set_width(ui.available_width());
+            ui.set_height(ui.available_height());
+
+            ui.label(ui_state.to_text());
+        });
 }
 
 // Components
