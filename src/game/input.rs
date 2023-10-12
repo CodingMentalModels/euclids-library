@@ -213,21 +213,21 @@ fn handle_choose_direction(
 }
 
 fn get_direction_from_keycode(keyboard_input: &Res<Input<KeyCode>>) -> Option<Direction> {
-    if keyboard_input.just_pressed(KeyCode::Numpad8) {
+    if keyboard_input.any_just_pressed([KeyCode::Numpad8, KeyCode::K]) {
         Some(Direction::Up)
-    } else if keyboard_input.just_pressed(KeyCode::Numpad2) {
+    } else if keyboard_input.any_just_pressed([KeyCode::Numpad2, KeyCode::J]) {
         Some(Direction::Down)
-    } else if keyboard_input.just_pressed(KeyCode::Numpad4) {
+    } else if keyboard_input.any_just_pressed([KeyCode::Numpad4, KeyCode::H]) {
         Some(Direction::Left)
-    } else if keyboard_input.just_pressed(KeyCode::Numpad6) {
+    } else if keyboard_input.any_just_pressed([KeyCode::Numpad6, KeyCode::L]) {
         Some(Direction::Right)
-    } else if keyboard_input.just_pressed(KeyCode::Numpad7) {
+    } else if keyboard_input.any_just_pressed([KeyCode::Numpad7, KeyCode::Y]) {
         Some(Direction::UpLeft)
-    } else if keyboard_input.just_pressed(KeyCode::Numpad9) {
+    } else if keyboard_input.any_just_pressed([KeyCode::Numpad9, KeyCode::U]) {
         Some(Direction::UpRight)
-    } else if keyboard_input.just_pressed(KeyCode::Numpad1) {
+    } else if keyboard_input.any_just_pressed([KeyCode::Numpad1, KeyCode::B]) {
         Some(Direction::DownLeft)
-    } else if keyboard_input.just_pressed(KeyCode::Numpad3) {
+    } else if keyboard_input.any_just_pressed([KeyCode::Numpad3, KeyCode::N]) {
         Some(Direction::DownRight)
     } else {
         None
