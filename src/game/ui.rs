@@ -118,9 +118,16 @@ fn render_interacting_ui(mut contexts: EguiContexts, ui_state: ResMut<Interactin
 
 fn render_menu_ui(mut contexts: EguiContexts, ui_state: ResMut<MenuUIState>) {
     let ctx = contexts.ctx_mut();
-    let size = egui::Vec2::new(MENU_WIDTH, MENU_HEIGHT);
+    let size = egui::Vec2::new(ctx.screen_rect().width(), ctx.screen_rect().height())
+        * MENU_TO_SCREEN_RATIO;
     egui::Window::new("menu-area")
-        .anchor(Align2::CENTER_TOP, egui::Vec2::new(0., 100.))
+        .anchor(
+            Align2::CENTER_TOP,
+            egui::Vec2::new(
+                0.,
+                (ctx.screen_rect().height() * (1. - MENU_TO_SCREEN_RATIO) / 2.),
+            ),
+        )
         .fixed_size(size)
         .frame(Frame::none().fill(Color32::BLACK))
         .title_bar(false)
@@ -128,6 +135,7 @@ fn render_menu_ui(mut contexts: EguiContexts, ui_state: ResMut<MenuUIState>) {
             //  Workaround for https://users.rust-lang.org/t/egui-questions-regarding-window-size/88753/3
             ui.set_width(ui.available_width());
             ui.set_height(ui.available_height());
+
             ui.label(ui_state.to_text());
         });
 }
