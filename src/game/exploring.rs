@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 
-use super::character::LocationComponent;
+use super::character::{BodyComponent, LocationComponent};
+use super::events::DamageEvent;
+use super::resources::RngResource;
 use super::{
     constants::*,
     events::{CameraMovementEvent, MovementEvent},
@@ -29,6 +31,10 @@ impl Plugin for ExploringPlugin {
             .add_systems(
                 Update,
                 move_camera_system.run_if(in_state(GameState::Exploring)),
+            )
+            .add_systems(
+                Update,
+                handle_damage_system.run_if(in_state(GameState::Exploring)),
             )
             .add_systems(
                 Update,
@@ -158,6 +164,21 @@ fn spawn_map(
     }
 
     should_spawn.0 = false;
+}
+
+fn handle_damage_system(
+    mut character_query: Query<(Entity, &mut BodyComponent)>,
+    mut damage_event_reader: EventReader<DamageEvent>,
+    mut rng: ResMut<RngResource>,
+) {
+    for damage_event in damage_event_reader.iter() {
+        let DamageEvent(damaged_entity, damage) = damage_event;
+        for (entity, mut body_component) in character_query.iter_mut() {
+            if *damaged_entity == entity {
+                body_component.0.take_damage(&mut *rng, damage.clone());
+            }
+        }
+    }
 }
 
 fn emit_particles_system(

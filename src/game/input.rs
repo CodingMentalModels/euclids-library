@@ -3,6 +3,7 @@ use bevy_mod_raycast::{
     print_intersections, DefaultRaycastingPlugin, RaycastMethod, RaycastSource, RaycastSystem,
 };
 
+use super::events::DamageEvent;
 use super::events::{
     CameraMovementEvent, CameraZoomEvent, ChooseDirectionEvent, Direction, MovementEvent,
     OpenMenuEvent, ProgressPromptEvent, StateChangeEvent,
@@ -19,6 +20,7 @@ impl Plugin for InputPlugin {
             .add_event::<CameraMovementEvent>()
             .add_event::<CameraZoomEvent>()
             .add_event::<MovementEvent>()
+            .add_event::<DamageEvent>()
             .add_event::<StateChangeEvent>()
             .add_event::<ChooseDirectionEvent>()
             .add_event::<ProgressPromptEvent>()

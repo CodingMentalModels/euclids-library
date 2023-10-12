@@ -1,12 +1,12 @@
 use std::collections::{HashMap, HashSet};
 
 use bevy::prelude::*;
-use rand::rngs::ThreadRng;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 use super::constants::*;
 use super::map::{MapLocation, TileLocation};
+use super::resources::RngResource;
 
 // Components
 
@@ -163,7 +163,7 @@ impl BodyPartTreeNode {
         self.add(Self::leaf(body_part))
     }
 
-    pub fn take_damage_recursive(&mut self, rng: &mut ThreadRng, damage: Damage) {
+    pub fn take_damage_recursive(&mut self, rng: &mut RngResource, damage: Damage) {
         let own_size = self.get_size() as f32;
         let children_size = self.get_total_children_size() as f32;
         let p_own_damage = own_size / (own_size + children_size);
@@ -177,7 +177,7 @@ impl BodyPartTreeNode {
         }
     }
 
-    pub fn take_damage_child(&mut self, rng: &mut ThreadRng, damage: Damage) {
+    pub fn take_damage_child(&mut self, rng: &mut RngResource, damage: Damage) {
         let children_size = self.get_total_children_size() as f32;
         let choice: usize = Probability::choose(
             rng,
@@ -197,7 +197,7 @@ impl BodyPartTreeNode {
         self.children[choice].take_damage_recursive(rng, damage);
     }
 
-    pub fn take_damage(&mut self, rng: &mut ThreadRng, damage: Damage) {
+    pub fn take_damage(&mut self, rng: &mut RngResource, damage: Damage) {
         let state_transitions = damage
             .get_state_transitions_from(self.get_state())
             .expect("State transitions are checked when Damage is instantiated.");
@@ -497,7 +497,7 @@ impl Probability {
     }
 
     pub fn choose<T: Clone>(
-        rng: &mut ThreadRng,
+        rng: &mut RngResource,
         choices: HashMap<T, Probability>,
     ) -> Result<T, ProbabilityError> {
         if choices.len() == 0 {
@@ -508,7 +508,11 @@ impl Probability {
         let _ = Probability::new(total_prob)?;
         // Ensure that total probability is still a probability.
 
-        let mut rand_choice = rng.gen_range(0..=total_prob);
+        let mut raw_rng = rng
+            .0
+            .write()
+            .expect("If a thread somewhere panicked, we should panic.");
+        let mut rand_choice = raw_rng.gen_range(0..=total_prob);
 
         for (item, prob) in choices.iter() {
             if rand_choice <= prob.0 {
@@ -520,8 +524,12 @@ impl Probability {
         panic!("Unreachable -- the sum is calculated within the function.");
     }
 
-    pub fn roll(&self, rng: &mut ThreadRng) -> bool {
-        let roll: f32 = rng.gen();
+    pub fn roll(&self, rng: &mut RngResource) -> bool {
+        let mut raw_rng = rng
+            .0
+            .write()
+            .expect("If a thread somewhere panicked, then we should panic.");
+        let roll: f32 = raw_rng.gen();
         let roll_u8 = (roll * 100.) as u8;
         roll_u8 < self.0
     }

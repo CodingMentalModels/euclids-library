@@ -1,7 +1,7 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::RwLock};
 
 use bevy::prelude::*;
-use rand::rngs::ThreadRng;
+use rand::rngs::StdRng;
 
 use crate::game::constants::*;
 
@@ -24,6 +24,9 @@ pub enum GameState {
     GameOver,
     Victory,
 }
+
+#[derive(Debug, Resource)]
+pub struct RngResource(pub RwLock<StdRng>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Resource)]
 pub struct LoadedFont(pub Handle<Font>);

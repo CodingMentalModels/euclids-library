@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use super::{map::TileLocation, menu::MenuType, resources::GameState};
+use super::{character::Damage, map::TileLocation, menu::MenuType, resources::GameState};
 
 pub struct EventsPlugin;
 
@@ -84,6 +84,9 @@ impl ChooseDirectionEvent {
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
 pub struct StateChangeEvent(pub GameState);
+
+#[derive(Debug, Clone, Event)]
+pub struct DamageEvent(pub Entity, pub Damage);
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Direction {
