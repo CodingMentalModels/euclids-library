@@ -1,6 +1,11 @@
 use bevy::prelude::*;
 
-use super::{events::OpenMenuEvent, resources::GameState, ui_state::MenuUIState};
+use super::{
+    events::OpenMenuEvent,
+    player::{BodyComponent, PlayerComponent},
+    resources::GameState,
+    ui_state::MenuUIState,
+};
 
 pub struct MenuPlugin;
 
@@ -19,17 +24,14 @@ impl Plugin for MenuPlugin {
 fn open_menu_system(
     mut commands: Commands,
     mut open_menu_event_reader: EventReader<OpenMenuEvent>,
+    player_query: Query<&BodyComponent, With<PlayerComponent>>,
 ) {
     for event in open_menu_event_reader.iter() {
         commands.insert_resource(NextState(Some(GameState::Menu)));
         match event.0 {
             MenuType::Character => {
-                let options = vec![
-                    "Body".to_string(),
-                    "Head".to_string(),
-                    "Left Leg".to_string(),
-                    "Right Leg".to_string(),
-                ];
+                let player_body_component = player_query.single();
+                let options = player_body_component.0.get_menu_text();
                 commands.insert_resource(MenuUIState::new(options));
             }
         }
