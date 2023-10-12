@@ -3,7 +3,6 @@ use std::collections::HashSet;
 
 use bevy::prelude::*;
 
-use egui::RichText;
 use rand::rngs::ThreadRng;
 use rand::Rng;
 use serde::Deserialize;
