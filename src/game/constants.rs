@@ -13,6 +13,7 @@ pub const DEFAULT_FOOT_SIZE: u8 = 5;
 pub const DEFAULT_FONT_SIZE: f32 = 24.;
 pub const MENU_WIDTH: f32 = 680.;
 pub const MENU_HEIGHT: f32 = 420.;
+pub const MENU_INDENTATION: &str = "    ";
 
 // Map
 pub const DEFAULT_MAP_WIDTH_IN_TILES: usize = 50;
@@ -29,6 +30,7 @@ pub const BLUEPRINT_BLUE: (f32, f32, f32) = (0.25, 0.25, 0.75);
 
 // Ascii
 pub const MIDDLE_DOT: char = '\u{00B7}';
+pub const EM_DASH: char = '\u{2014}';
 
 // Greek Letters
 pub const ALPHA_LOWER: char = 'α';

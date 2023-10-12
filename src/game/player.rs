@@ -285,7 +285,13 @@ impl BodyPartTreeNode {
             let mut children_text = self
                 .children
                 .iter()
-                .map(|child| child.get_menu_text())
+                .map(|child| {
+                    child
+                        .get_menu_text()
+                        .into_iter()
+                        .map(|line| format!("{}{}", MENU_INDENTATION, line))
+                        .collect::<Vec<_>>()
+                })
                 .flatten()
                 .collect();
             own_text.append(&mut children_text);
@@ -348,14 +354,16 @@ impl BodyPart {
 
     pub fn get_menu_text(&self) -> String {
         let head = format!(
-            "{} -- {}",
+            "{} {} {}",
             self.body_part_type.to_string(),
+            EM_DASH,
             self.state.to_string(),
         );
         if self.has_any_status_effect() {
             return format!(
-                "{} -- {}",
+                "{} {} {}",
                 head,
+                EM_DASH,
                 BodyPartStatusEffect::pretty_print_set(&self.statuses.clone())
             );
         } else {
