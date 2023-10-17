@@ -20,35 +20,30 @@ pub struct ExploringPlugin;
 
 impl Plugin for ExploringPlugin {
     fn build(&self, app: &mut App) {
+        let generalized_exploring =
+            || in_state(GameState::Exploring).or_else(in_state(GameState::NPCTurns));
         app.add_systems(OnEnter(GameState::LoadingMap), load_map_system)
             .add_systems(OnEnter(GameState::Exploring), spawn_map)
+            .add_systems(Update, movement_system.run_if(generalized_exploring()))
+            .add_systems(Update, update_positions.run_if(generalized_exploring()))
+            .add_systems(Update, move_camera_system.run_if(generalized_exploring()))
+            .add_systems(Update, handle_damage_system.run_if(generalized_exploring()))
             .add_systems(
                 Update,
-                movement_system.run_if(in_state(GameState::Exploring)),
+                emit_particles_system.run_if(generalized_exploring()),
             )
             .add_systems(
                 Update,
-                update_positions.run_if(in_state(GameState::Exploring)),
+                update_particles_system.run_if(generalized_exploring()),
             )
             .add_systems(
                 Update,
-                move_camera_system.run_if(in_state(GameState::Exploring)),
+                despawn_particles_offscreen_system.run_if(generalized_exploring()),
             )
+            .add_systems(OnEnter(GameState::NPCTurns), determine_turn_order_system)
             .add_systems(
                 Update,
-                handle_damage_system.run_if(in_state(GameState::Exploring)),
-            )
-            .add_systems(
-                Update,
-                emit_particles_system.run_if(in_state(GameState::Exploring)),
-            )
-            .add_systems(
-                Update,
-                update_particles_system.run_if(in_state(GameState::Exploring)),
-            )
-            .add_systems(
-                Update,
-                despawn_particles_offscreen_system.run_if(in_state(GameState::Exploring)),
+                process_npc_turn.run_if(in_state(GameState::NPCTurns)),
             );
     }
 }
@@ -56,7 +51,10 @@ impl Plugin for ExploringPlugin {
 // Resources
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Resource)]
-pub struct ShouldSpawn(pub bool);
+pub struct ShouldSpawnMap(pub bool);
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Resource)]
+pub struct NPCTurnOrder(pub Vec<Entity>);
 
 // End Resources
 
@@ -79,10 +77,11 @@ fn load_map_system(mut commands: Commands) {
 
     commands.insert_resource(LoadedMap(map_layer.into()));
     commands.insert_resource(NextState(Some(GameState::Exploring)));
-    commands.insert_resource(ShouldSpawn(true));
+    commands.insert_resource(ShouldSpawnMap(true));
 }
 
 fn movement_system(
+    mut commands: Commands,
     mut movement_event_reader: EventReader<TryMoveEvent>,
     mut query: Query<(Entity, &mut LocationComponent, Option<&PlayerComponent>)>,
     map: Res<LoadedMap>,
@@ -106,6 +105,7 @@ fn movement_system(
                         Ok(is_traversable) => {
                             if is_traversable {
                                 *location = final_location;
+                                commands.insert_resource(NextState(Some(GameState::NPCTurns)));
                             } else {
                                 info!("Trying to traverse non-traversable terrain.");
                             }
@@ -141,7 +141,7 @@ fn spawn_map(
     npc_query: Query<(Entity, &LocationComponent), With<NPCComponent>>,
     map: Res<LoadedMap>,
     font: Res<LoadedFont>,
-    mut should_spawn: ResMut<ShouldSpawn>,
+    mut should_spawn: ResMut<ShouldSpawnMap>,
 ) {
     if !should_spawn.0 {
         info!("Ignoring spawn_map.");
@@ -289,6 +289,22 @@ fn despawn_particles_offscreen_system(
             || position_relative.y > adjusted_height
         {
             commands.entity(entity).despawn_recursive();
+        }
+    }
+}
+
+fn determine_turn_order_system(mut commands: Commands, query: Query<Entity, With<NPCComponent>>) {
+    // TODO: Do this based on how many auts of overflow they had
+    commands.insert_resource(NPCTurnOrder(query.iter().collect::<Vec<Entity>>()));
+}
+
+fn process_npc_turn(mut commands: Commands, mut npc_turns: ResMut<NPCTurnOrder>) {
+    match npc_turns.0.pop() {
+        Some(npc) => {
+            info!("NPC {:?} takes its turn", npc);
+        }
+        None => {
+            commands.insert_resource(NextState(Some(GameState::Exploring)));
         }
     }
 }

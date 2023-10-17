@@ -18,6 +18,7 @@ pub enum GameState {
     InitializingWorld,
     LoadingMap,
     Exploring,
+    NPCTurns,
     Interacting,
     Menu,
     Paused,
