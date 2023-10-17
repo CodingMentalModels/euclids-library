@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use bevy::prelude::*;
 
 use super::character::{BodyComponent, LocationComponent};
@@ -5,7 +7,7 @@ use super::events::DamageEvent;
 use super::resources::RngResource;
 use super::{
     constants::*,
-    events::{CameraMovementEvent, MovementEvent},
+    events::{CameraMovementEvent, TryMoveEvent},
     map::{MapLayer, SurfaceTile, Tile},
     npc::NPCComponent,
     particle::{ParticleComponent, ParticleEmitterComponent, ParticleTiming},
@@ -22,7 +24,7 @@ impl Plugin for ExploringPlugin {
             .add_systems(OnEnter(GameState::Exploring), spawn_map)
             .add_systems(
                 Update,
-                move_player_system.run_if(in_state(GameState::Exploring)),
+                movement_system.run_if(in_state(GameState::Exploring)),
             )
             .add_systems(
                 Update,
@@ -80,15 +82,38 @@ fn load_map_system(mut commands: Commands) {
     commands.insert_resource(ShouldSpawn(true));
 }
 
-fn move_player_system(
-    mut movement_event_reader: EventReader<MovementEvent>,
-    mut player_query: Query<&mut LocationComponent, With<PlayerComponent>>,
+fn movement_system(
+    mut movement_event_reader: EventReader<TryMoveEvent>,
+    mut query: Query<(Entity, &mut LocationComponent, Option<&PlayerComponent>)>,
+    map: Res<LoadedMap>,
 ) {
-    let mut player_location = player_query.single_mut();
-
-    // TODO Instead, set up the movement so that a collision system can take over.
-    for movement_event in movement_event_reader.iter() {
-        player_location.translate(movement_event.0.as_tile_location());
+    let non_traversable_entity_locations = query
+        .iter()
+        .map(|(_, location, _)| location.0)
+        .collect::<HashSet<_>>();
+    for try_move_event in movement_event_reader.iter() {
+        for (entity, mut location, _maybe_is_player) in query.iter_mut() {
+            let TryMoveEvent(entity_to_move, direction) = try_move_event;
+            if entity == *entity_to_move {
+                let final_location = location.translated(direction.as_tile_location());
+                if non_traversable_entity_locations.contains(&final_location.0) {
+                    info!("Trying to walk into another entity.");
+                } else {
+                    match map.0.is_traversable(final_location.0) {
+                        Err(_e) => {
+                            info!("Trying to walk off the map.");
+                        }
+                        Ok(is_traversable) => {
+                            if is_traversable {
+                                *location = final_location;
+                            } else {
+                                info!("Trying to traverse non-traversable terrain.");
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

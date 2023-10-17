@@ -57,15 +57,15 @@ impl CameraMovementEvent {
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
-pub struct MovementEvent(pub Direction);
+pub struct TryMoveEvent(pub Entity, pub Direction);
 
-impl MovementEvent {
+impl TryMoveEvent {
     pub fn as_vector(&self) -> Vec2 {
-        self.0.as_vector()
+        self.1.as_vector()
     }
 
     pub fn as_tile_location(&self) -> TileLocation {
-        self.0.as_tile_location()
+        self.1.as_tile_location()
     }
 }
 

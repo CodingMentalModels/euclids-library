@@ -26,7 +26,7 @@ impl Plugin for WorldPlugin {
 fn initialize_player_system(mut commands: Commands) {
     let player = Player::new(
         "Player".to_string(),
-        MapLocation::new(0, TileLocation::zero()),
+        MapLocation::new(0, TileLocation::new(1, 1)),
     );
     player.spawn(&mut commands);
 

@@ -5,10 +5,11 @@ use bevy_mod_raycast::{
 
 use super::events::DamageEvent;
 use super::events::{
-    CameraMovementEvent, CameraZoomEvent, ChooseDirectionEvent, Direction, MovementEvent,
-    OpenMenuEvent, ProgressPromptEvent, StateChangeEvent,
+    CameraMovementEvent, CameraZoomEvent, ChooseDirectionEvent, Direction, OpenMenuEvent,
+    ProgressPromptEvent, StateChangeEvent, TryMoveEvent,
 };
 use super::menu::MenuType;
+use super::player::PlayerComponent;
 use super::resources::GameState;
 
 pub struct InputPlugin;
@@ -19,7 +20,7 @@ impl Plugin for InputPlugin {
             .add_event::<OpenMenuEvent>()
             .add_event::<CameraMovementEvent>()
             .add_event::<CameraZoomEvent>()
-            .add_event::<MovementEvent>()
+            .add_event::<TryMoveEvent>()
             .add_event::<DamageEvent>()
             .add_event::<StateChangeEvent>()
             .add_event::<ChooseDirectionEvent>()
@@ -53,9 +54,10 @@ pub fn input_system(
     camera_movement_event_writer: EventWriter<CameraMovementEvent>,
     zoom_event_writer: EventWriter<CameraZoomEvent>,
     open_menu_event_writer: EventWriter<OpenMenuEvent>,
-    movement_event_writer: EventWriter<MovementEvent>,
+    movement_event_writer: EventWriter<TryMoveEvent>,
     choose_direction_event_writer: EventWriter<ChooseDirectionEvent>,
     progress_prompt_event_writer: EventWriter<ProgressPromptEvent>,
+    player_entity_query: Query<Entity, With<PlayerComponent>>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Escape) {
         pause_unpause_event_writer.send(PauseUnpauseEvent);
@@ -65,7 +67,7 @@ pub fn input_system(
         GameState::Exploring => {
             handle_camera_movement(&keyboard_input, camera_movement_event_writer);
             handle_camera_zoom(&keyboard_input, zoom_event_writer);
-            handle_movement(&keyboard_input, movement_event_writer);
+            handle_movement(&keyboard_input, movement_event_writer, player_entity_query);
             handle_interact(&keyboard_input, state_change_event_writer);
             handle_open_menu(&keyboard_input, open_menu_event_writer);
         }
@@ -114,11 +116,15 @@ pub struct MouseoverRaycastSet;
 
 fn handle_movement(
     keyboard_input: &Res<Input<KeyCode>>,
-    mut movement_event_writer: EventWriter<MovementEvent>,
+    mut movement_event_writer: EventWriter<TryMoveEvent>,
+    player_query: Query<Entity, With<PlayerComponent>>,
 ) {
+    let player_entity = player_query
+        .get_single()
+        .expect("Handle movement should only be run once a player exists.");
     match get_direction_from_keycode(keyboard_input) {
         Some(direction) => {
-            movement_event_writer.send(MovementEvent(direction));
+            movement_event_writer.send(TryMoveEvent(player_entity, direction));
         }
         _ => {
             // Do nothing
