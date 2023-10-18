@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use super::character::{BodyComponent, LocationComponent};
 use super::events::DamageEvent;
 use super::resources::RngResource;
+use super::ui_state::LogState;
 use super::{
     constants::*,
     events::{CameraMovementEvent, TryMoveEvent},
@@ -84,6 +85,7 @@ fn movement_system(
     mut commands: Commands,
     mut movement_event_reader: EventReader<TryMoveEvent>,
     mut query: Query<(Entity, &mut LocationComponent, Option<&PlayerComponent>)>,
+    mut log: ResMut<LogState>,
     map: Res<LoadedMap>,
 ) {
     let non_traversable_entity_locations = query
@@ -96,18 +98,18 @@ fn movement_system(
             if entity == *entity_to_move {
                 let final_location = location.translated(direction.as_tile_location());
                 if non_traversable_entity_locations.contains(&final_location.0) {
-                    info!("Trying to walk into another entity.");
+                    log.log_string("Trying to walk into another entity.");
                 } else {
                     match map.0.is_traversable(final_location.0) {
                         Err(_e) => {
-                            info!("Trying to walk off the map.");
+                            log.log_string("Trying to walk off the map.");
                         }
                         Ok(is_traversable) => {
                             if is_traversable {
                                 *location = final_location;
                                 commands.insert_resource(NextState(Some(GameState::NPCTurns)));
                             } else {
-                                info!("Trying to traverse non-traversable terrain.");
+                                log.log_string("Trying to traverse non-traversable terrain.");
                             }
                         }
                     }

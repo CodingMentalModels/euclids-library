@@ -32,6 +32,35 @@ impl MenuUIState {
     }
 }
 
+#[derive(Resource, Clone, Default)]
+pub struct LogState(Vec<egui::RichText>);
+
+impl LogState {
+    pub fn get_messages(&self) -> Vec<egui::RichText> {
+        self.0.clone()
+    }
+
+    pub fn log_string(&mut self, message: &str) {
+        self.0.push(
+            egui::RichText::new(message.to_string())
+                .size(LOG_TEXT_SIZE)
+                .color(egui::Color32::WHITE),
+        );
+    }
+
+    pub fn log_string_color(&mut self, message: &str, color: egui::Color32) {
+        self.0.push(
+            egui::RichText::new(message.to_string())
+                .color(color)
+                .size(LOG_TEXT_SIZE),
+        );
+    }
+
+    pub fn log(&mut self, message: egui::RichText) {
+        self.0.push(message);
+    }
+}
+
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct TileGrid {
     grid: Vec<Vec<TileAppearance>>,

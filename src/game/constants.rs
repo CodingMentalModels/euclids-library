@@ -13,6 +13,8 @@ pub const DEFAULT_FOOT_SIZE: u8 = 5;
 pub const DEFAULT_FONT_SIZE: f32 = 24.;
 pub const MENU_TO_SCREEN_RATIO: f32 = 0.8;
 pub const MENU_INDENTATION: &str = "    ";
+pub const LOG_WINDOW_SIZE: (f32, f32) = (540., 200.);
+pub const LOG_TEXT_SIZE: f32 = 14.;
 
 // Map
 pub const DEFAULT_MAP_WIDTH_IN_TILES: usize = 50;
