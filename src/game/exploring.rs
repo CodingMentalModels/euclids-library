@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use bevy::prelude::*;
 
 use super::character::{ActionClockComponent, BodyComponent, LocationComponent};
+use super::enemy::EnemyComponent;
 use super::events::DamageEvent;
 use super::resources::RngResource;
 use super::ui_state::LogState;
@@ -145,8 +146,21 @@ fn move_camera_system(
 
 fn spawn_map(
     mut commands: Commands,
-    player_query: Query<(Entity, &LocationComponent), With<PlayerComponent>>,
-    npc_query: Query<(Entity, &LocationComponent), With<NPCComponent>>,
+    character_query: Query<
+        (
+            Entity,
+            &LocationComponent,
+            Option<&PlayerComponent>,
+            Option<&NPCComponent>,
+            Option<&EnemyComponent>,
+        ),
+        Or<(
+            With<NPCComponent>,
+            With<PlayerComponent>,
+            With<EnemyComponent>,
+        )>,
+    >,
+    enemy_query: Query<(Entity, &LocationComponent), With<EnemyComponent>>,
     map: Res<LoadedMap>,
     font: Res<LoadedFont>,
     mut should_spawn: ResMut<ShouldSpawnMap>,
@@ -157,7 +171,10 @@ fn spawn_map(
     }
 
     info!("Spawning map.");
-    let (player_entity, player_location) = player_query.single();
+    let (player_entity, player_location, _, _, _) = character_query
+        .iter()
+        .find(|(entity, _location, maybe_player_component, _, _)| maybe_player_component.is_some())
+        .expect("The player must exist.");
 
     let map_layer = map
         .0
@@ -177,24 +194,31 @@ fn spawn_map(
         });
 
     let player_tile = TileAppearance::Ascii(AsciiTileAppearance::from('@'));
-    let player_sprite = player_tile.render(
-        &mut commands
-            .get_entity(player_entity)
-            .expect("Player entity must exist if it was returned from the query."),
-        font.0.clone(),
-        TileGrid::tile_to_world_coordinates(player_location.0.get_tile_location()),
-    );
-    commands.entity(player_sprite).insert(PlayerSprite);
+    let npc_tile = TileAppearance::Ascii('&'.into());
+    let enemy_tile = TileAppearance::Ascii('s'.into());
 
-    for (entity, location) in npc_query.iter() {
-        let npc_tile = TileAppearance::Ascii('&'.into());
-        let _npc_sprite = npc_tile.render(
+    for (entity, location, maybe_player, maybe_npc, maybe_enemy) in character_query.iter() {
+        let tile_appearance = if maybe_player.is_some() {
+            player_tile.clone()
+        } else if maybe_npc.is_some() {
+            npc_tile.clone()
+        } else if maybe_enemy.is_some() {
+            enemy_tile.clone()
+        } else {
+            unreachable!("These are the only entities");
+        };
+
+        let sprite = tile_appearance.render(
             &mut commands
                 .get_entity(entity)
-                .expect("NPC Entity must exist if it was returned from the query."),
+                .expect("Entity must exist if it was returned from the query."),
             font.0.clone(),
             TileGrid::tile_to_world_coordinates(location.0.get_tile_location()),
         );
+
+        if maybe_player.is_some() {
+            commands.entity(sprite).insert(PlayerSprite);
+        }
     }
 
     should_spawn.0 = false;
@@ -301,7 +325,7 @@ fn despawn_particles_offscreen_system(
     }
 }
 
-fn determine_turn_order_system(mut commands: Commands, query: Query<Entity, With<NPCComponent>>) {
+fn determine_turn_order_system(mut commands: Commands, query: Query<Entity, With<EnemyComponent>>) {
     // TODO: Do this based on how many auts of overflow they had
     commands.insert_resource(NonPlayerTurnOrder(query.iter().collect::<Vec<Entity>>()));
 }

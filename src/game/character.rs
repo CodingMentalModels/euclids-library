@@ -9,7 +9,6 @@ use super::map::{MapLocation, TileLocation};
 use super::resources::RngResource;
 
 // Components
-
 #[derive(Component, Clone)]
 pub struct BodyComponent(pub BodyPartTreeNode);
 
