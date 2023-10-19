@@ -19,7 +19,7 @@ pub struct UIPlugin;
 impl Plugin for UIPlugin {
     fn build(&self, app: &mut App) {
         let generalized_exploring =
-            || in_state(GameState::Exploring).or_else(in_state(GameState::NPCTurns));
+            || in_state(GameState::Exploring).or_else(in_state(GameState::NonPlayerTurns));
         app.add_event::<UpdateUIEvent>()
             .add_plugins(EguiPlugin)
             .add_systems(OnEnter(GameState::LoadingUI), configure_visuals)

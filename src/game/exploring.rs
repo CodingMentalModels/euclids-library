@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use bevy::prelude::*;
 
-use super::character::{BodyComponent, LocationComponent};
+use super::character::{ActionClockComponent, BodyComponent, LocationComponent};
 use super::events::DamageEvent;
 use super::resources::RngResource;
 use super::ui_state::LogState;
@@ -22,7 +22,7 @@ pub struct ExploringPlugin;
 impl Plugin for ExploringPlugin {
     fn build(&self, app: &mut App) {
         let generalized_exploring =
-            || in_state(GameState::Exploring).or_else(in_state(GameState::NPCTurns));
+            || in_state(GameState::Exploring).or_else(in_state(GameState::NonPlayerTurns));
         app.add_systems(OnEnter(GameState::LoadingMap), load_map_system)
             .add_systems(OnEnter(GameState::Exploring), spawn_map)
             .add_systems(Update, movement_system.run_if(generalized_exploring()))
@@ -41,10 +41,13 @@ impl Plugin for ExploringPlugin {
                 Update,
                 despawn_particles_offscreen_system.run_if(generalized_exploring()),
             )
-            .add_systems(OnEnter(GameState::NPCTurns), determine_turn_order_system)
+            .add_systems(
+                OnEnter(GameState::NonPlayerTurns),
+                determine_turn_order_system,
+            )
             .add_systems(
                 Update,
-                process_npc_turn.run_if(in_state(GameState::NPCTurns)),
+                process_non_player_turn.run_if(in_state(GameState::NonPlayerTurns)),
             );
     }
 }
@@ -55,7 +58,10 @@ impl Plugin for ExploringPlugin {
 pub struct ShouldSpawnMap(pub bool);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Resource)]
-pub struct NPCTurnOrder(pub Vec<Entity>);
+pub struct NonPlayerTurnOrder(pub Vec<Entity>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Resource)]
+pub struct NonPlayerTurnLength(pub u8);
 
 // End Resources
 
@@ -107,7 +113,7 @@ fn movement_system(
                         Ok(is_traversable) => {
                             if is_traversable {
                                 *location = final_location;
-                                commands.insert_resource(NextState(Some(GameState::NPCTurns)));
+                                end_turn(&mut commands, MOVEMENT_TICKS);
                             } else {
                                 log.log_string("Trying to traverse non-traversable terrain.");
                             }
@@ -297,17 +303,30 @@ fn despawn_particles_offscreen_system(
 
 fn determine_turn_order_system(mut commands: Commands, query: Query<Entity, With<NPCComponent>>) {
     // TODO: Do this based on how many auts of overflow they had
-    commands.insert_resource(NPCTurnOrder(query.iter().collect::<Vec<Entity>>()));
+    commands.insert_resource(NonPlayerTurnOrder(query.iter().collect::<Vec<Entity>>()));
 }
 
-fn process_npc_turn(
+fn process_non_player_turn(
     mut commands: Commands,
-    mut npc_turns: ResMut<NPCTurnOrder>,
+    mut non_player_turns: ResMut<NonPlayerTurnOrder>,
+    mut non_player_query: Query<(Entity, &mut ActionClockComponent)>,
     mut log: ResMut<LogState>,
+    non_player_turn_length: Res<NonPlayerTurnLength>,
 ) {
-    match npc_turns.0.pop() {
-        Some(npc) => {
-            log.log_string(&format!("NPC {:?} takes its turn", npc));
+    match non_player_turns.0.pop() {
+        Some(non_player_entity) => {
+            for (entity, mut action_clock) in non_player_query.iter_mut() {
+                if entity == non_player_entity {
+                    if action_clock.tick(non_player_turn_length.0) {
+                        log.log_string(&format!("{:?} takes its turn", non_player_entity));
+                    } else {
+                        log.log_string(&format!(
+                            "{:?} didn't get to take its turn",
+                            non_player_entity
+                        ));
+                    }
+                }
+            }
         }
         None => {
             commands.insert_resource(NextState(Some(GameState::Exploring)));
@@ -324,5 +343,8 @@ struct PlayerSprite;
 // End Components
 
 // Helper Functions
-
+fn end_turn(mut commands: &mut Commands, n_ticks: u8) {
+    commands.insert_resource(NonPlayerTurnLength(n_ticks));
+    commands.insert_resource(NextState(Some(GameState::NonPlayerTurns)));
+}
 // End Helper Functions
