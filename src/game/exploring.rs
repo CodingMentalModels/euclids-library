@@ -300,10 +300,14 @@ fn determine_turn_order_system(mut commands: Commands, query: Query<Entity, With
     commands.insert_resource(NPCTurnOrder(query.iter().collect::<Vec<Entity>>()));
 }
 
-fn process_npc_turn(mut commands: Commands, mut npc_turns: ResMut<NPCTurnOrder>) {
+fn process_npc_turn(
+    mut commands: Commands,
+    mut npc_turns: ResMut<NPCTurnOrder>,
+    mut log: ResMut<LogState>,
+) {
     match npc_turns.0.pop() {
         Some(npc) => {
-            info!("NPC {:?} takes its turn", npc);
+            log.log_string(&format!("NPC {:?} takes its turn", npc));
         }
         None => {
             commands.insert_resource(NextState(Some(GameState::Exploring)));

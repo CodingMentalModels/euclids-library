@@ -28,6 +28,19 @@ impl LocationComponent {
     }
 }
 
+#[derive(Component, Clone, Copy, PartialEq)]
+pub struct ActionClockComponent(pub u8);
+
+impl ActionClockComponent {
+    pub fn tick(&mut self, amount: u8) -> bool {
+        self.0 = self.0.saturating_sub(amount);
+        self.finished()
+    }
+
+    pub fn finished(&self) -> bool {
+        self.0 == 0
+    }
+}
 // End Components
 
 // Structs
@@ -593,5 +606,33 @@ mod tests {
             body.has_status_effect_recursive(BodyPartStatusEffect::Infected),
             false
         );
+    }
+
+    #[test]
+    fn test_action_clock_ticks() {
+        let action_clock = ActionClockComponent(0);
+        assert!(action_clock.finished());
+
+        let mut action_clock = ActionClockComponent(10);
+        assert!(!action_clock.finished());
+        assert_eq!(action_clock.0, 10);
+
+        action_clock.tick(5);
+        assert!(!action_clock.finished());
+
+        action_clock.tick(0);
+        assert!(!action_clock.finished());
+
+        action_clock.tick(4);
+        assert!(!action_clock.finished());
+        assert_eq!(action_clock.0, 1);
+
+        action_clock.tick(1);
+        assert!(action_clock.finished());
+
+        action_clock.tick(100);
+        assert!(action_clock.finished());
+
+        assert_eq!(action_clock.0, 0);
     }
 }
