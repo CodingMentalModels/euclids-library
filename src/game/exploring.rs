@@ -198,15 +198,14 @@ fn spawn_map(
     let enemy_tile = TileAppearance::Ascii('s'.into());
 
     for (entity, location, maybe_player, maybe_npc, maybe_enemy) in character_query.iter() {
-        let tile_appearance = if maybe_player.is_some() {
-            player_tile.clone()
-        } else if maybe_npc.is_some() {
-            npc_tile.clone()
-        } else if maybe_enemy.is_some() {
-            enemy_tile.clone()
-        } else {
-            unreachable!("These are the only entities");
-        };
+        let maybe_player_tile = maybe_player.map(|_| player_tile.clone());
+        let maybe_npc_tile = maybe_npc.map(|_| npc_tile.clone());
+        let maybe_enemy_tile = maybe_enemy.map(|_| enemy_tile.clone());
+
+        let tile_appearance = maybe_player_tile
+            .or(maybe_npc_tile)
+            .or(maybe_enemy_tile)
+            .expect("Must be one of the 3 types given the query.");
 
         let sprite = tile_appearance.render(
             &mut commands
