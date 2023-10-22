@@ -17,6 +17,7 @@ pub const MENU_TO_SCREEN_RATIO: f32 = 0.8;
 pub const MENU_INDENTATION: &str = "    ";
 pub const LOG_WINDOW_SIZE: (f32, f32) = (540., 200.);
 pub const LOG_TEXT_SIZE: f32 = 14.;
+pub const KEY_HOLD_DELAY_IN_MILLIS: u64 = 500;
 
 // Map
 pub const DEFAULT_MAP_WIDTH_IN_TILES: usize = 50;

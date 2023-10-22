@@ -1,8 +1,11 @@
+use std::time::Duration;
+
 use bevy::prelude::*;
 use bevy_mod_raycast::{
     print_intersections, DefaultRaycastingPlugin, RaycastMethod, RaycastSource, RaycastSystem,
 };
 
+use super::constants::*;
 use super::events::DamageEvent;
 use super::events::{
     CameraMovementEvent, CameraZoomEvent, ChooseDirectionEvent, Direction, OpenMenuEvent,
@@ -38,6 +41,91 @@ impl Plugin for InputPlugin {
 
 // End Components
 
+// Resources
+
+#[derive(Debug, Resource)]
+pub struct KeyHoldTimer {
+    timer: Timer,
+    key: Option<KeyCode>,
+}
+
+impl Default for KeyHoldTimer {
+    fn default() -> Self {
+        KeyHoldTimer {
+            timer: Timer::new(
+                Duration::from_millis(KEY_HOLD_DELAY_IN_MILLIS),
+                TimerMode::Once,
+            ),
+            key: None,
+        }
+    }
+}
+
+impl KeyHoldTimer {
+    fn new(key: KeyCode) -> Self {
+        let mut to_return = Self::default();
+        to_return.set_key(key);
+        to_return
+    }
+
+    fn finished(&self) -> bool {
+        self.timer.finished()
+    }
+
+    fn get_key(&self) -> Option<KeyCode> {
+        self.key
+    }
+
+    fn has_key(&self) -> bool {
+        self.key.is_some()
+    }
+
+    fn set_key(&mut self, key: KeyCode) {
+        self.key = Some(key);
+    }
+
+    fn cancel(&mut self) {
+        self.timer.reset();
+        self.key = None;
+    }
+
+    fn reset_with(&mut self, key: KeyCode) {
+        self.timer.reset();
+        self.key = Some(key);
+    }
+
+    fn tick_and_maybe_trigger(
+        &mut self,
+        delta: Duration,
+        keyboard_input: Res<Input<KeyCode>>,
+        key_code: KeyCode,
+    ) -> bool {
+        self.timer.tick(delta);
+        match self.key {
+            None => {
+                self.set_key(key_code);
+                true
+            }
+            Some(held_key) => {
+                if held_key != key_code {
+                    self.reset_with(key_code);
+                    true
+                } else if keyboard_input.pressed(held_key) {
+                    if self.finished() {
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            }
+        }
+    }
+}
+
+// End Resources
+
 // Events
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Event)]
@@ -49,6 +137,8 @@ pub struct PauseUnpauseEvent;
 pub fn input_system(
     keyboard_input: Res<Input<KeyCode>>,
     state: Res<State<GameState>>,
+    timer: Res<KeyHoldTimer>,
+    time: Res<Time>,
     mut pause_unpause_event_writer: EventWriter<PauseUnpauseEvent>,
     state_change_event_writer: EventWriter<StateChangeEvent>,
     camera_movement_event_writer: EventWriter<CameraMovementEvent>,
@@ -67,7 +157,13 @@ pub fn input_system(
         GameState::Exploring => {
             handle_camera_movement(&keyboard_input, camera_movement_event_writer);
             handle_camera_zoom(&keyboard_input, zoom_event_writer);
-            handle_movement(&keyboard_input, movement_event_writer, player_entity_query);
+            handle_movement(
+                &keyboard_input,
+                *timer,
+                time,
+                movement_event_writer,
+                player_entity_query,
+            );
             handle_interact(&keyboard_input, state_change_event_writer);
             handle_open_menu(&keyboard_input, open_menu_event_writer);
         }
@@ -116,6 +212,8 @@ pub struct MouseoverRaycastSet;
 
 fn handle_movement(
     keyboard_input: &Res<Input<KeyCode>>,
+    mut timer: KeyHoldTimer,
+    time: Res<Time>,
     mut movement_event_writer: EventWriter<TryMoveEvent>,
     player_query: Query<Entity, With<PlayerComponent>>,
 ) {
@@ -124,7 +222,10 @@ fn handle_movement(
         .expect("Handle movement should only be run once a player exists.");
     match get_direction_from_keycode(keyboard_input) {
         Some(direction) => {
-            movement_event_writer.send(TryMoveEvent(player_entity, direction));
+            timer.tick(time.delta());
+            if timer.should_trigger(keyboard_input) {
+                movement_event_writer.send(TryMoveEvent(player_entity, direction));
+            }
         }
         _ => {
             // Do nothing
