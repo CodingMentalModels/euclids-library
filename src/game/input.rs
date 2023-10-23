@@ -1,4 +1,5 @@
 use std::time::Duration;
+use std::unreachable;
 
 use bevy::prelude::*;
 use bevy_mod_raycast::{
@@ -28,6 +29,7 @@ impl Plugin for InputPlugin {
             .add_event::<StateChangeEvent>()
             .add_event::<ChooseDirectionEvent>()
             .add_event::<ProgressPromptEvent>()
+            .insert_resource(KeyHoldTimer::default())
             .add_systems(
                 First,
                 update_raycast_with_cursor.before(RaycastSystem::BuildRays::<MouseoverRaycastSet>),
@@ -84,7 +86,7 @@ impl KeyHoldTimer {
         self.key = Some(key);
     }
 
-    fn cancel(&mut self) {
+    fn reset(&mut self) {
         self.timer.reset();
         self.key = None;
     }
@@ -97,27 +99,47 @@ impl KeyHoldTimer {
     fn tick_and_maybe_trigger(
         &mut self,
         delta: Duration,
-        keyboard_input: Res<Input<KeyCode>>,
-        key_code: KeyCode,
+        keyboard_input: &Res<Input<KeyCode>>,
     ) -> bool {
         self.timer.tick(delta);
+        info!(
+            "Timer: {} of {}",
+            self.timer.elapsed().as_millis(),
+            self.timer.duration().as_millis()
+        );
+
+        let mut pressed_keys = keyboard_input.get_pressed();
+        if pressed_keys.len() != 1 {
+            info!("Multiple keys pressed.  Resetting.");
+            self.reset();
+            return true;
+        }
+
+        let key_code = *(pressed_keys
+            .next()
+            .expect("We just checked that the length is 1."));
         match self.key {
             None => {
-                self.set_key(key_code);
+                info!("No previous key set.  Resetting with {:?}", key_code);
+                self.reset_with(key_code);
                 true
             }
             Some(held_key) => {
                 if held_key != key_code {
+                    info!(
+                        "New key ({:?}) doesn't match old key ({:?}).  Resetting with {:?}",
+                        key_code, held_key, key_code
+                    );
                     self.reset_with(key_code);
                     true
-                } else if keyboard_input.pressed(held_key) {
+                } else {
                     if self.finished() {
+                        info!("We've held long enough.  Triggering.");
                         true
                     } else {
+                        info!("We haven't held long enough.  Not triggering.");
                         false
                     }
-                } else {
-                    false
                 }
             }
         }
@@ -137,7 +159,7 @@ pub struct PauseUnpauseEvent;
 pub fn input_system(
     keyboard_input: Res<Input<KeyCode>>,
     state: Res<State<GameState>>,
-    timer: Res<KeyHoldTimer>,
+    mut timer: ResMut<KeyHoldTimer>,
     time: Res<Time>,
     mut pause_unpause_event_writer: EventWriter<PauseUnpauseEvent>,
     state_change_event_writer: EventWriter<StateChangeEvent>,
@@ -149,6 +171,10 @@ pub fn input_system(
     progress_prompt_event_writer: EventWriter<ProgressPromptEvent>,
     player_entity_query: Query<Entity, With<PlayerComponent>>,
 ) {
+    if keyboard_input.get_just_released().count() > 0 {
+        timer.reset();
+    }
+
     if keyboard_input.just_pressed(KeyCode::Escape) {
         pause_unpause_event_writer.send(PauseUnpauseEvent);
     }
@@ -159,7 +185,7 @@ pub fn input_system(
             handle_camera_zoom(&keyboard_input, zoom_event_writer);
             handle_movement(
                 &keyboard_input,
-                *timer,
+                &mut timer,
                 time,
                 movement_event_writer,
                 player_entity_query,
@@ -212,7 +238,7 @@ pub struct MouseoverRaycastSet;
 
 fn handle_movement(
     keyboard_input: &Res<Input<KeyCode>>,
-    mut timer: KeyHoldTimer,
+    timer: &mut KeyHoldTimer,
     time: Res<Time>,
     mut movement_event_writer: EventWriter<TryMoveEvent>,
     player_query: Query<Entity, With<PlayerComponent>>,
@@ -222,8 +248,7 @@ fn handle_movement(
         .expect("Handle movement should only be run once a player exists.");
     match get_direction_from_keycode(keyboard_input) {
         Some(direction) => {
-            timer.tick(time.delta());
-            if timer.should_trigger(keyboard_input) {
+            if timer.tick_and_maybe_trigger(time.delta(), keyboard_input) {
                 movement_event_writer.send(TryMoveEvent(player_entity, direction));
             }
         }
@@ -322,21 +347,21 @@ fn handle_choose_direction(
 }
 
 fn get_direction_from_keycode(keyboard_input: &Res<Input<KeyCode>>) -> Option<Direction> {
-    if keyboard_input.any_just_pressed([KeyCode::Numpad8, KeyCode::K]) {
+    if keyboard_input.any_pressed([KeyCode::Numpad8, KeyCode::K]) {
         Some(Direction::Up)
-    } else if keyboard_input.any_just_pressed([KeyCode::Numpad2, KeyCode::J]) {
+    } else if keyboard_input.any_pressed([KeyCode::Numpad2, KeyCode::J]) {
         Some(Direction::Down)
-    } else if keyboard_input.any_just_pressed([KeyCode::Numpad4, KeyCode::H]) {
+    } else if keyboard_input.any_pressed([KeyCode::Numpad4, KeyCode::H]) {
         Some(Direction::Left)
-    } else if keyboard_input.any_just_pressed([KeyCode::Numpad6, KeyCode::L]) {
+    } else if keyboard_input.any_pressed([KeyCode::Numpad6, KeyCode::L]) {
         Some(Direction::Right)
-    } else if keyboard_input.any_just_pressed([KeyCode::Numpad7, KeyCode::Y]) {
+    } else if keyboard_input.any_pressed([KeyCode::Numpad7, KeyCode::Y]) {
         Some(Direction::UpLeft)
-    } else if keyboard_input.any_just_pressed([KeyCode::Numpad9, KeyCode::U]) {
+    } else if keyboard_input.any_pressed([KeyCode::Numpad9, KeyCode::U]) {
         Some(Direction::UpRight)
-    } else if keyboard_input.any_just_pressed([KeyCode::Numpad1, KeyCode::B]) {
+    } else if keyboard_input.any_pressed([KeyCode::Numpad1, KeyCode::B]) {
         Some(Direction::DownLeft)
-    } else if keyboard_input.any_just_pressed([KeyCode::Numpad3, KeyCode::N]) {
+    } else if keyboard_input.any_pressed([KeyCode::Numpad3, KeyCode::N]) {
         Some(Direction::DownRight)
     } else {
         None

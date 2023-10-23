@@ -166,11 +166,9 @@ fn spawn_map(
     mut should_spawn: ResMut<ShouldSpawnMap>,
 ) {
     if !should_spawn.0 {
-        info!("Ignoring spawn_map.");
         return;
     }
 
-    info!("Spawning map.");
     let (player_entity, player_location, _, _, _) = character_query
         .iter()
         .find(|(entity, _location, maybe_player_component, _, _)| maybe_player_component.is_some())

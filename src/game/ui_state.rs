@@ -172,7 +172,6 @@ impl TileAppearance {
         font: Handle<Font>,
         location: Vec2,
     ) -> Entity {
-        info!("Rendering tile at {}", location);
         match self {
             TileAppearance::Ascii(appearance) => entity_commands
                 .insert(Text2dBundle {
