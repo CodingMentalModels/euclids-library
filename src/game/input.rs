@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::time::Duration;
 use std::unreachable;
 
@@ -108,7 +109,10 @@ impl KeyHoldTimer {
             self.timer.duration().as_millis()
         );
 
-        let mut pressed_keys = keyboard_input.get_pressed();
+        let mut pressed_keys = keyboard_input
+            .get_pressed()
+            .filter(|key| !is_modifier_key(**key))
+            .collect::<Vec<_>>();
         if pressed_keys.len() != 1 {
             info!("Multiple keys pressed.  Resetting.");
             self.reset();
@@ -116,7 +120,7 @@ impl KeyHoldTimer {
         }
 
         let key_code = *(pressed_keys
-            .next()
+            .pop()
             .expect("We just checked that the length is 1."));
         match self.key {
             None => {
@@ -182,11 +186,11 @@ pub fn input_system(
     match state.get() {
         GameState::Exploring => {
             handle_camera_movement(&keyboard_input, camera_movement_event_writer);
-            handle_camera_zoom(&keyboard_input, zoom_event_writer);
+            handle_camera_zoom(&keyboard_input, &mut timer, time.delta(), zoom_event_writer);
             handle_movement(
                 &keyboard_input,
                 &mut timer,
-                time,
+                time.delta(),
                 movement_event_writer,
                 player_entity_query,
             );
@@ -239,7 +243,7 @@ pub struct MouseoverRaycastSet;
 fn handle_movement(
     keyboard_input: &Res<Input<KeyCode>>,
     timer: &mut KeyHoldTimer,
-    time: Res<Time>,
+    delta: Duration,
     mut movement_event_writer: EventWriter<TryMoveEvent>,
     player_query: Query<Entity, With<PlayerComponent>>,
 ) {
@@ -248,7 +252,7 @@ fn handle_movement(
         .expect("Handle movement should only be run once a player exists.");
     match get_direction_from_keycode(keyboard_input) {
         Some(direction) => {
-            if timer.tick_and_maybe_trigger(time.delta(), keyboard_input) {
+            if timer.tick_and_maybe_trigger(delta, keyboard_input) {
                 movement_event_writer.send(TryMoveEvent(player_entity, direction));
             }
         }
@@ -260,16 +264,22 @@ fn handle_movement(
 
 fn handle_camera_zoom(
     keyboard_input: &Res<Input<KeyCode>>,
+    timer: &mut KeyHoldTimer,
+    delta: Duration,
     mut zoom_event_writer: EventWriter<CameraZoomEvent>,
 ) {
     if keyboard_input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight])
-        && keyboard_input.just_pressed(KeyCode::Equals)
+        && keyboard_input.pressed(KeyCode::Equals)
     {
-        zoom_event_writer.send(CameraZoomEvent(1));
+        if timer.tick_and_maybe_trigger(delta, keyboard_input) {
+            zoom_event_writer.send(CameraZoomEvent(1));
+        }
     }
 
-    if keyboard_input.just_pressed(KeyCode::Minus) {
-        zoom_event_writer.send(CameraZoomEvent(-1));
+    if keyboard_input.pressed(KeyCode::Minus) {
+        if timer.tick_and_maybe_trigger(delta, keyboard_input) {
+            zoom_event_writer.send(CameraZoomEvent(-1));
+        }
     }
 }
 
@@ -411,6 +421,20 @@ fn get_digit_from_keycode(keyboard_input: &Res<Input<KeyCode>>) -> Option<usize>
         Some(9)
     } else {
         None
+    }
+}
+
+fn is_modifier_key(key: KeyCode) -> bool {
+    match key {
+        KeyCode::ShiftLeft
+        | KeyCode::ShiftRight
+        | KeyCode::ControlLeft
+        | KeyCode::ControlRight
+        | KeyCode::AltLeft
+        | KeyCode::AltRight
+        | KeyCode::SuperLeft
+        | KeyCode::SuperRight => true,
+        _ => false,
     }
 }
 // End Helper Functions
