@@ -185,7 +185,12 @@ pub fn input_system(
 
     match state.get() {
         GameState::Exploring => {
-            handle_camera_movement(&keyboard_input, camera_movement_event_writer);
+            handle_camera_movement(
+                &keyboard_input,
+                &mut timer,
+                time.delta(),
+                camera_movement_event_writer,
+            );
             handle_camera_zoom(&keyboard_input, &mut timer, time.delta(), zoom_event_writer);
             handle_movement(
                 &keyboard_input,
@@ -285,19 +290,29 @@ fn handle_camera_zoom(
 
 fn handle_camera_movement(
     keyboard_input: &Res<Input<KeyCode>>,
+    mut timer: &mut KeyHoldTimer,
+    delta: Duration,
     mut camera_movement_event_writer: EventWriter<CameraMovementEvent>,
 ) {
-    if keyboard_input.just_pressed(KeyCode::W) {
-        camera_movement_event_writer.send(CameraMovementEvent(Direction::Up));
+    if keyboard_input.pressed(KeyCode::W) {
+        if timer.tick_and_maybe_trigger(delta, keyboard_input) {
+            camera_movement_event_writer.send(CameraMovementEvent(Direction::Up));
+        }
     }
-    if keyboard_input.just_pressed(KeyCode::A) {
-        camera_movement_event_writer.send(CameraMovementEvent(Direction::Left));
+    if keyboard_input.pressed(KeyCode::A) {
+        if timer.tick_and_maybe_trigger(delta, keyboard_input) {
+            camera_movement_event_writer.send(CameraMovementEvent(Direction::Left));
+        }
     }
-    if keyboard_input.just_pressed(KeyCode::S) {
-        camera_movement_event_writer.send(CameraMovementEvent(Direction::Down));
+    if keyboard_input.pressed(KeyCode::S) {
+        if timer.tick_and_maybe_trigger(delta, keyboard_input) {
+            camera_movement_event_writer.send(CameraMovementEvent(Direction::Down));
+        }
     }
-    if keyboard_input.just_pressed(KeyCode::D) {
-        camera_movement_event_writer.send(CameraMovementEvent(Direction::Right));
+    if keyboard_input.pressed(KeyCode::D) {
+        if timer.tick_and_maybe_trigger(delta, keyboard_input) {
+            camera_movement_event_writer.send(CameraMovementEvent(Direction::Right));
+        }
     }
 }
 
