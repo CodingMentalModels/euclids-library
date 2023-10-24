@@ -1,6 +1,8 @@
 pub mod assets;
+pub mod character;
 pub mod constants;
 pub mod dialog;
+pub mod enemy;
 pub mod events;
 pub mod exploring;
 pub mod input;

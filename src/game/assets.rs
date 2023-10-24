@@ -1,6 +1,10 @@
 use bevy::prelude::*;
+use rand::rngs::StdRng;
+use rand::thread_rng;
+use rand::SeedableRng;
 use std::fs;
 use std::path::Path;
+use std::sync::RwLock;
 
 use crate::game::constants::*;
 use crate::game::resources::*;
@@ -61,6 +65,8 @@ fn load_assets_system(mut commands: Commands) {
         .expect("Error parsing npcs.");
 
     commands.insert_resource(NPCSpecs::from_vec(npcs));
+    let rng = StdRng::seed_from_u64(12345);
+    commands.insert_resource(RngResource(RwLock::new(rng)));
     commands.insert_resource(NextState(Some(GameState::LoadingUI)));
 }
 

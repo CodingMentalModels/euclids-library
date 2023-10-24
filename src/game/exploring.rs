@@ -1,12 +1,19 @@
+use std::collections::HashSet;
+
 use bevy::prelude::*;
 
+use super::character::{ActionClockComponent, BodyComponent, LocationComponent};
+use super::enemy::{AIComponent, EnemyComponent};
+use super::events::DamageEvent;
+use super::resources::RngResource;
+use super::ui_state::LogState;
 use super::{
     constants::*,
-    events::{CameraMovementEvent, MovementEvent, OpenMenuEvent},
+    events::{CameraMovementEvent, TryMoveEvent},
     map::{MapLayer, SurfaceTile, Tile},
     npc::NPCComponent,
     particle::{ParticleComponent, ParticleEmitterComponent, ParticleTiming},
-    player::{LocationComponent, PlayerComponent},
+    player::PlayerComponent,
     resources::{GameState, LoadedFont, LoadedMap},
     ui_state::{AsciiTileAppearance, TileAppearance, TileGrid},
 };
@@ -15,31 +22,33 @@ pub struct ExploringPlugin;
 
 impl Plugin for ExploringPlugin {
     fn build(&self, app: &mut App) {
+        let generalized_exploring =
+            || in_state(GameState::Exploring).or_else(in_state(GameState::NonPlayerTurns));
         app.add_systems(OnEnter(GameState::LoadingMap), load_map_system)
             .add_systems(OnEnter(GameState::Exploring), spawn_map)
+            .add_systems(Update, movement_system.run_if(generalized_exploring()))
+            .add_systems(Update, update_positions.run_if(generalized_exploring()))
+            .add_systems(Update, move_camera_system.run_if(generalized_exploring()))
+            .add_systems(Update, handle_damage_system.run_if(generalized_exploring()))
             .add_systems(
                 Update,
-                move_player_system.run_if(in_state(GameState::Exploring)),
+                emit_particles_system.run_if(generalized_exploring()),
             )
             .add_systems(
                 Update,
-                update_positions.run_if(in_state(GameState::Exploring)),
+                update_particles_system.run_if(generalized_exploring()),
             )
             .add_systems(
                 Update,
-                move_camera_system.run_if(in_state(GameState::Exploring)),
+                despawn_particles_offscreen_system.run_if(generalized_exploring()),
+            )
+            .add_systems(
+                OnEnter(GameState::NonPlayerTurns),
+                determine_turn_order_system,
             )
             .add_systems(
                 Update,
-                emit_particles_system.run_if(in_state(GameState::Exploring)),
-            )
-            .add_systems(
-                Update,
-                update_particles_system.run_if(in_state(GameState::Exploring)),
-            )
-            .add_systems(
-                Update,
-                despawn_particles_offscreen_system.run_if(in_state(GameState::Exploring)),
+                process_non_player_turn.run_if(in_state(GameState::NonPlayerTurns)),
             );
     }
 }
@@ -47,7 +56,13 @@ impl Plugin for ExploringPlugin {
 // Resources
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Resource)]
-pub struct ShouldSpawn(pub bool);
+pub struct ShouldSpawnMap(pub bool);
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Resource)]
+pub struct NonPlayerTurnOrder(pub Vec<Entity>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Resource)]
+pub struct NonPlayerTurnLength(pub u8);
 
 // End Resources
 
@@ -70,17 +85,44 @@ fn load_map_system(mut commands: Commands) {
 
     commands.insert_resource(LoadedMap(map_layer.into()));
     commands.insert_resource(NextState(Some(GameState::Exploring)));
-    commands.insert_resource(ShouldSpawn(true));
+    commands.insert_resource(ShouldSpawnMap(true));
 }
 
-fn move_player_system(
-    mut movement_event_reader: EventReader<MovementEvent>,
-    mut player_query: Query<&mut LocationComponent, With<PlayerComponent>>,
+fn movement_system(
+    mut commands: Commands,
+    mut movement_event_reader: EventReader<TryMoveEvent>,
+    mut query: Query<(Entity, &mut LocationComponent, Option<&PlayerComponent>)>,
+    mut log: ResMut<LogState>,
+    map: Res<LoadedMap>,
 ) {
-    let mut player_location = player_query.single_mut();
-
-    for movement_event in movement_event_reader.iter() {
-        player_location.translate(movement_event.0.as_tile_location());
+    let non_traversable_entity_locations = query
+        .iter()
+        .map(|(_, location, _)| location.0)
+        .collect::<HashSet<_>>();
+    for try_move_event in movement_event_reader.iter() {
+        for (entity, mut location, _maybe_is_player) in query.iter_mut() {
+            let TryMoveEvent(entity_to_move, direction) = try_move_event;
+            if entity == *entity_to_move {
+                let final_location = location.translated(direction.as_tile_location());
+                if non_traversable_entity_locations.contains(&final_location.0) {
+                    log.log_string("Trying to walk into another entity.");
+                } else {
+                    match map.0.is_traversable(final_location.0) {
+                        Err(_e) => {
+                            log.log_string("Trying to walk off the map.");
+                        }
+                        Ok(is_traversable) => {
+                            if is_traversable {
+                                *location = final_location;
+                                end_turn(&mut commands, MOVEMENT_TICKS);
+                            } else {
+                                log.log_string("Trying to traverse non-traversable terrain.");
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -104,19 +146,33 @@ fn move_camera_system(
 
 fn spawn_map(
     mut commands: Commands,
-    player_query: Query<(Entity, &LocationComponent), With<PlayerComponent>>,
-    npc_query: Query<(Entity, &LocationComponent), With<NPCComponent>>,
+    character_query: Query<
+        (
+            Entity,
+            &LocationComponent,
+            Option<&PlayerComponent>,
+            Option<&NPCComponent>,
+            Option<&EnemyComponent>,
+        ),
+        Or<(
+            With<NPCComponent>,
+            With<PlayerComponent>,
+            With<EnemyComponent>,
+        )>,
+    >,
+    enemy_query: Query<(Entity, &LocationComponent), With<EnemyComponent>>,
     map: Res<LoadedMap>,
     font: Res<LoadedFont>,
-    mut should_spawn: ResMut<ShouldSpawn>,
+    mut should_spawn: ResMut<ShouldSpawnMap>,
 ) {
     if !should_spawn.0 {
-        info!("Ignoring spawn_map.");
         return;
     }
 
-    info!("Spawning map.");
-    let (player_entity, player_location) = player_query.single();
+    let (player_entity, player_location, _, _, _) = character_query
+        .iter()
+        .find(|(entity, _location, maybe_player_component, _, _)| maybe_player_component.is_some())
+        .expect("The player must exist.");
 
     let map_layer = map
         .0
@@ -136,27 +192,48 @@ fn spawn_map(
         });
 
     let player_tile = TileAppearance::Ascii(AsciiTileAppearance::from('@'));
-    let player_sprite = player_tile.render(
-        &mut commands
-            .get_entity(player_entity)
-            .expect("Player entity must exist if it was returned from the query."),
-        font.0.clone(),
-        TileGrid::tile_to_world_coordinates(player_location.0.get_tile_location()),
-    );
-    commands.entity(player_sprite).insert(PlayerSprite);
+    let npc_tile = TileAppearance::Ascii('&'.into());
+    let enemy_tile = TileAppearance::Ascii('s'.into());
 
-    for (entity, location) in npc_query.iter() {
-        let npc_tile = TileAppearance::Ascii('&'.into());
-        let _npc_sprite = npc_tile.render(
+    for (entity, location, maybe_player, maybe_npc, maybe_enemy) in character_query.iter() {
+        let maybe_player_tile = maybe_player.map(|_| player_tile.clone());
+        let maybe_npc_tile = maybe_npc.map(|_| npc_tile.clone());
+        let maybe_enemy_tile = maybe_enemy.map(|_| enemy_tile.clone());
+
+        let tile_appearance = maybe_player_tile
+            .or(maybe_npc_tile)
+            .or(maybe_enemy_tile)
+            .expect("Must be one of the 3 types given the query.");
+
+        let sprite = tile_appearance.render(
             &mut commands
                 .get_entity(entity)
-                .expect("NPC Entity must exist if it was returned from the query."),
+                .expect("Entity must exist if it was returned from the query."),
             font.0.clone(),
             TileGrid::tile_to_world_coordinates(location.0.get_tile_location()),
         );
+
+        if maybe_player.is_some() {
+            commands.entity(sprite).insert(PlayerSprite);
+        }
     }
 
     should_spawn.0 = false;
+}
+
+fn handle_damage_system(
+    mut character_query: Query<(Entity, &mut BodyComponent)>,
+    mut damage_event_reader: EventReader<DamageEvent>,
+    mut rng: ResMut<RngResource>,
+) {
+    for damage_event in damage_event_reader.iter() {
+        let DamageEvent(damaged_entity, damage) = damage_event;
+        for (entity, mut body_component) in character_query.iter_mut() {
+            if *damaged_entity == entity {
+                body_component.0.take_damage(&mut *rng, damage.clone());
+            }
+        }
+    }
 }
 
 fn emit_particles_system(
@@ -245,6 +322,50 @@ fn despawn_particles_offscreen_system(
     }
 }
 
+fn determine_turn_order_system(
+    mut commands: Commands,
+    non_player_query: Query<(Entity, &ActionClockComponent)>,
+) {
+    let mut results: Vec<(Entity, &ActionClockComponent)> =
+        non_player_query.iter().collect::<Vec<_>>();
+
+    // Should be ascending because we pop off of NonPlayerTurnOrder
+    results.sort_by(|a, b| a.1.get_remaining().cmp(&b.1.get_remaining()));
+
+    commands.insert_resource(NonPlayerTurnOrder(
+        results.iter().map(|(e, _)| e).cloned().collect(),
+    ));
+}
+
+fn process_non_player_turn(
+    mut commands: Commands,
+    mut non_player_turns: ResMut<NonPlayerTurnOrder>,
+    mut non_player_query: Query<(Entity, &mut ActionClockComponent, &mut AIComponent)>,
+    mut log: ResMut<LogState>,
+    non_player_turn_length: Res<NonPlayerTurnLength>,
+) {
+    match non_player_turns.0.pop() {
+        Some(non_player_entity) => {
+            for (acting_entity, mut action_clock, mut ai) in non_player_query.iter_mut() {
+                if acting_entity == non_player_entity {
+                    if action_clock.tick_and_is_finished(non_player_turn_length.0) {
+                        log.log_string(&format!("{:?} takes its turn", non_player_entity));
+                        action_clock.reset(ai.next().get_ticks());
+                    } else {
+                        log.log_string(&format!(
+                            "{:?} didn't get to take its turn",
+                            non_player_entity
+                        ));
+                    }
+                }
+            }
+        }
+        None => {
+            commands.insert_resource(NextState(Some(GameState::Exploring)));
+        }
+    }
+}
+
 // End Systems
 
 // Components
@@ -254,5 +375,8 @@ struct PlayerSprite;
 // End Components
 
 // Helper Functions
-
+fn end_turn(mut commands: &mut Commands, n_ticks: u8) {
+    commands.insert_resource(NonPlayerTurnLength(n_ticks));
+    commands.insert_resource(NextState(Some(GameState::NonPlayerTurns)));
+}
 // End Helper Functions

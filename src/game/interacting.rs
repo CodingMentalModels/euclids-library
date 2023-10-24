@@ -1,12 +1,12 @@
 use bevy::prelude::*;
 
+use super::character::LocationComponent;
 use super::{
     dialog::Dialog,
     events::{ChooseDirectionEvent, ProgressPromptEvent, UpdateUIEvent},
-    map::Map,
-    player::{LocationComponent, PlayerComponent},
-    resources::{GameState, LoadedMap},
-    ui_state::{ExploringUIState, InteractingUIState},
+    player::PlayerComponent,
+    resources::GameState,
+    ui_state::InteractingUIState,
 };
 
 pub struct InteractingPlugin;

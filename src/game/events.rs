@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use super::{map::TileLocation, menu::MenuType, resources::GameState};
+use super::{character::Damage, map::TileLocation, menu::MenuType, resources::GameState};
 
 pub struct EventsPlugin;
 
@@ -57,15 +57,15 @@ impl CameraMovementEvent {
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
-pub struct MovementEvent(pub Direction);
+pub struct TryMoveEvent(pub Entity, pub Direction);
 
-impl MovementEvent {
+impl TryMoveEvent {
     pub fn as_vector(&self) -> Vec2 {
-        self.0.as_vector()
+        self.1.as_vector()
     }
 
     pub fn as_tile_location(&self) -> TileLocation {
-        self.0.as_tile_location()
+        self.1.as_tile_location()
     }
 }
 
@@ -84,6 +84,9 @@ impl ChooseDirectionEvent {
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
 pub struct StateChangeEvent(pub GameState);
+
+#[derive(Debug, Clone, Event)]
+pub struct DamageEvent(pub Entity, pub Damage);
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Direction {

@@ -3,7 +3,7 @@ use std::unimplemented;
 use bevy::{asset::LoadState, prelude::*};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use bevy_mod_raycast::RaycastSource;
-use egui::{Align2, Color32, Frame};
+use egui::{Align2, Color32, Frame, Ui};
 
 use crate::game::constants::*;
 use crate::game::input::MouseoverRaycastSet;
@@ -12,12 +12,14 @@ use crate::game::resources::*;
 use super::dialog::Dialog;
 use super::events::{CameraZoomEvent, UpdateUIEvent};
 use super::interacting::{update_interacting_ui_state_system, Interactable, InteractingState};
-use super::ui_state::{InteractingUIState, MenuUIState};
+use super::ui_state::{InteractingUIState, LogState, MenuUIState};
 
 pub struct UIPlugin;
 
 impl Plugin for UIPlugin {
     fn build(&self, app: &mut App) {
+        let generalized_exploring =
+            || in_state(GameState::Exploring).or_else(in_state(GameState::NonPlayerTurns));
         app.add_event::<UpdateUIEvent>()
             .add_plugins(EguiPlugin)
             .add_systems(OnEnter(GameState::LoadingUI), configure_visuals)
@@ -26,6 +28,7 @@ impl Plugin for UIPlugin {
                 Update,
                 update_camera_zoom.run_if(in_state(GameState::Exploring)),
             )
+            .add_systems(Update, render_exploring_ui.run_if(generalized_exploring()))
             .add_systems(
                 Update,
                 render_interacting_ui
@@ -58,6 +61,9 @@ fn ui_load_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     commands.insert_resource(LoadedFont(font.clone()));
 
+    let mut log = LogState::default();
+    commands.insert_resource(log);
+
     commands
         .spawn(Camera2dBundle::default())
         .insert(RaycastSource::<MouseoverRaycastSet>::new());
@@ -78,6 +84,18 @@ fn update_camera_zoom(
             orthographic_projection.scale = log_zoom;
         }
     }
+}
+
+fn render_exploring_ui(mut contexts: EguiContexts, log_state: Res<LogState>) {
+    let ctx = contexts.ctx_mut();
+
+    egui::TopBottomPanel::bottom("bottom-panel").show(ctx, |ui| {
+        egui::SidePanel::left("log-panel")
+            .min_width(LOG_WINDOW_SIZE.0)
+            .show_inside(ui, |mut ui| {
+                render_log(ui, &log_state);
+            });
+    });
 }
 
 fn render_interacting_ui(mut contexts: EguiContexts, ui_state: ResMut<InteractingUIState>) {
@@ -149,5 +167,27 @@ fn render_menu_ui(mut contexts: EguiContexts, ui_state: ResMut<MenuUIState>) {
 // End Helper Structs
 
 // Helper Functions
+fn render_log(ui: &mut Ui, log_state: &LogState) {
+    ui.label(get_underlined_text("Log".to_string()).size(LOG_TEXT_SIZE));
+    egui::ScrollArea::vertical()
+        .auto_shrink([false, false])
+        .min_scrolled_height(LOG_WINDOW_SIZE.1)
+        .stick_to_bottom(true)
+        .show(ui, |ui| {
+            for log_message in log_state.get_messages().into_iter() {
+                ui.label(log_message);
+            }
+        });
+}
+
+fn get_underlined_text(s: String) -> egui::RichText {
+    get_default_text(s).underline()
+}
+
+fn get_default_text(s: String) -> egui::RichText {
+    egui::RichText::new(s)
+        .size(DEFAULT_FONT_SIZE)
+        .color(egui::Color32::WHITE)
+}
 
 // End Helper Functions

@@ -32,6 +32,11 @@ impl Map {
         self.get_layer(location.map_layer)
             .and_then(|layer| layer.get_from_location(location.get_tile_location()))
     }
+
+    pub fn is_traversable(&self, location: MapLocation) -> Result<bool, MapError> {
+        self.get_layer(location.map_layer)
+            .and_then(|layer| layer.is_traversable(location.get_tile_location()))
+    }
 }
 
 impl From<MapLayer> for Map {
@@ -132,7 +137,15 @@ impl MapLayer {
     }
 
     fn is_in_bounds(&self, i: usize, j: usize) -> bool {
+        !self.is_out_of_bounds(i, j)
+    }
+
+    fn is_out_of_bounds(&self, i: usize, j: usize) -> bool {
         (i >= self.width()) || (j >= self.height())
+    }
+
+    fn is_traversable(&self, tile_location: TileLocation) -> Result<bool, MapError> {
+        Ok(self.get_from_location(tile_location)?.is_traversable())
     }
 }
 
@@ -178,6 +191,14 @@ impl Tile {
 
     pub fn get_top_of_stack(&self) -> Option<ObjectTile> {
         self.stack.last().cloned()
+    }
+
+    pub fn is_traversable(&self) -> bool {
+        match self.get_surface() {
+            SurfaceTile::Ground => true,
+            SurfaceTile::Fireplace => true,
+            SurfaceTile::Wall => false,
+        }
     }
 }
 
@@ -289,6 +310,44 @@ impl TileLocation {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_map_is_traversable() {
+        let map_layer = MapLayer::fill(5, 5, Tile::empty_ground());
+        assert!(map_layer.is_traversable(TileLocation::zero()).unwrap());
+
+        let map: Map = MapLayer::fill(5, 5, Tile::empty_ground()).into();
+        assert!(map
+            .is_traversable(MapLocation::new(0, TileLocation::zero()))
+            .unwrap());
+        assert!(map
+            .get_layer(0)
+            .unwrap()
+            .is_traversable(TileLocation::zero())
+            .unwrap());
+        assert!(map
+            .is_traversable(MapLocation::new(0, TileLocation::new(4, 4)))
+            .unwrap());
+
+        let map: Map = MapLayer::fill(5, 5, Tile::wall()).into();
+        assert_eq!(
+            map.is_traversable(MapLocation::new(0, TileLocation::zero()))
+                .unwrap(),
+            false
+        );
+        assert_eq!(
+            map.get_layer(0)
+                .unwrap()
+                .is_traversable(TileLocation::zero())
+                .unwrap(),
+            false
+        );
+        assert_eq!(
+            map.is_traversable(MapLocation::new(0, TileLocation::new(4, 4)))
+                .unwrap(),
+            false
+        );
+    }
 
     #[test]
     fn test_map_layer_width_and_height() {

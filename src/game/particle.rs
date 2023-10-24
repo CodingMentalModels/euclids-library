@@ -35,7 +35,6 @@ impl ParticleEmitterComponent {
 
         let position = origin + TileGrid::tile_to_world_coordinates(location);
         let entity = initial_appearance.render(&mut commands.spawn_empty(), font.clone(), position);
-        info!("Emmitted to {}", position);
 
         commands
             .entity(entity)
@@ -147,10 +146,8 @@ impl ParticleDuration {
                 let mut rng = thread_rng();
 
                 let lambda = 1. / (duration.as_millis() as f32);
-                info!("lambda: {}", lambda);
                 let exp = Exp::new(lambda).unwrap();
                 let v: f32 = exp.sample(&mut rng);
-                info!("exponential: {}", v);
                 Timer::new(Duration::from_millis(v.round() as u64), TimerMode::Once)
             }
         }

@@ -8,11 +8,16 @@ pub const DEFAULT_ARM_SIZE: u8 = 15;
 pub const DEFAULT_LEG_SIZE: u8 = 20;
 pub const DEFAULT_HAND_SIZE: u8 = 5;
 pub const DEFAULT_FOOT_SIZE: u8 = 5;
+pub const MOVEMENT_TICKS: u8 = 10;
+pub const AI_SPEAK_TICKS: u8 = 10;
 
 // UI
 pub const DEFAULT_FONT_SIZE: f32 = 24.;
 pub const MENU_TO_SCREEN_RATIO: f32 = 0.8;
 pub const MENU_INDENTATION: &str = "    ";
+pub const LOG_WINDOW_SIZE: (f32, f32) = (540., 200.);
+pub const LOG_TEXT_SIZE: f32 = 14.;
+pub const KEY_HOLD_DELAY_IN_MILLIS: u64 = 400;
 
 // Map
 pub const DEFAULT_MAP_WIDTH_IN_TILES: usize = 50;

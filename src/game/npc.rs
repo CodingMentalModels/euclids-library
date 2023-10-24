@@ -2,10 +2,10 @@ use bevy::{ecs::system::EntityCommands, prelude::*};
 use serde::{Deserialize, Serialize};
 
 use super::{
+    character::{BodyComponent, BodyPartTreeNode, LocationComponent},
     dialog::Dialog,
     interacting::{Interactable, InteractableComponent},
     map::MapLocation,
-    player::{BodyComponent, BodyPartTreeNode, LocationComponent},
 };
 
 // Components
