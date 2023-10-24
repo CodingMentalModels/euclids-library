@@ -31,6 +31,10 @@ impl LocationComponent {
 pub struct ActionClockComponent(pub u8);
 
 impl ActionClockComponent {
+    pub fn get_remaining(&self) -> u8 {
+        self.0
+    }
+
     pub fn tick_and_is_finished(&mut self, amount: u8) -> bool {
         self.tick(amount);
         self.finished()
@@ -43,7 +47,12 @@ impl ActionClockComponent {
     pub fn finished(&self) -> bool {
         self.0 == 0
     }
+
+    pub fn reset(&mut self, ticks: u8) {
+        self.0 = ticks;
+    }
 }
+
 // End Components
 
 // Structs
