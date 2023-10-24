@@ -97,24 +97,18 @@ impl KeyHoldTimer {
         self.key = Some(key);
     }
 
-    fn tick_and_maybe_trigger(
+    fn tick_and_should_trigger(
         &mut self,
         delta: Duration,
         keyboard_input: &Res<Input<KeyCode>>,
     ) -> bool {
         self.timer.tick(delta);
-        info!(
-            "Timer: {} of {}",
-            self.timer.elapsed().as_millis(),
-            self.timer.duration().as_millis()
-        );
-
         let mut pressed_keys = keyboard_input
             .get_pressed()
             .filter(|key| !is_modifier_key(**key))
             .collect::<Vec<_>>();
         if pressed_keys.len() != 1 {
-            info!("Multiple keys pressed.  Resetting.");
+            // Multiple keys pressed.  Resetting.
             self.reset();
             return true;
         }
@@ -124,24 +118,20 @@ impl KeyHoldTimer {
             .expect("We just checked that the length is 1."));
         match self.key {
             None => {
-                info!("No previous key set.  Resetting with {:?}", key_code);
+                // No previous key set
                 self.reset_with(key_code);
                 true
             }
             Some(held_key) => {
                 if held_key != key_code {
-                    info!(
-                        "New key ({:?}) doesn't match old key ({:?}).  Resetting with {:?}",
-                        key_code, held_key, key_code
-                    );
+                    // New key doesn't match old key.  Resetting with the new key.
                     self.reset_with(key_code);
                     true
                 } else {
+                    // Check the timer to see whether we should trigger
                     if self.finished() {
-                        info!("We've held long enough.  Triggering.");
                         true
                     } else {
-                        info!("We haven't held long enough.  Not triggering.");
                         false
                     }
                 }
@@ -257,7 +247,7 @@ fn handle_movement(
         .expect("Handle movement should only be run once a player exists.");
     match get_direction_from_keycode(keyboard_input) {
         Some(direction) => {
-            if timer.tick_and_maybe_trigger(delta, keyboard_input) {
+            if timer.tick_and_should_trigger(delta, keyboard_input) {
                 movement_event_writer.send(TryMoveEvent(player_entity, direction));
             }
         }
@@ -276,13 +266,13 @@ fn handle_camera_zoom(
     if keyboard_input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight])
         && keyboard_input.pressed(KeyCode::Equals)
     {
-        if timer.tick_and_maybe_trigger(delta, keyboard_input) {
+        if timer.tick_and_should_trigger(delta, keyboard_input) {
             zoom_event_writer.send(CameraZoomEvent(1));
         }
     }
 
     if keyboard_input.pressed(KeyCode::Minus) {
-        if timer.tick_and_maybe_trigger(delta, keyboard_input) {
+        if timer.tick_and_should_trigger(delta, keyboard_input) {
             zoom_event_writer.send(CameraZoomEvent(-1));
         }
     }
@@ -295,22 +285,22 @@ fn handle_camera_movement(
     mut camera_movement_event_writer: EventWriter<CameraMovementEvent>,
 ) {
     if keyboard_input.pressed(KeyCode::W) {
-        if timer.tick_and_maybe_trigger(delta, keyboard_input) {
+        if timer.tick_and_should_trigger(delta, keyboard_input) {
             camera_movement_event_writer.send(CameraMovementEvent(Direction::Up));
         }
     }
     if keyboard_input.pressed(KeyCode::A) {
-        if timer.tick_and_maybe_trigger(delta, keyboard_input) {
+        if timer.tick_and_should_trigger(delta, keyboard_input) {
             camera_movement_event_writer.send(CameraMovementEvent(Direction::Left));
         }
     }
     if keyboard_input.pressed(KeyCode::S) {
-        if timer.tick_and_maybe_trigger(delta, keyboard_input) {
+        if timer.tick_and_should_trigger(delta, keyboard_input) {
             camera_movement_event_writer.send(CameraMovementEvent(Direction::Down));
         }
     }
     if keyboard_input.pressed(KeyCode::D) {
-        if timer.tick_and_maybe_trigger(delta, keyboard_input) {
+        if timer.tick_and_should_trigger(delta, keyboard_input) {
             camera_movement_event_writer.send(CameraMovementEvent(Direction::Right));
         }
     }
