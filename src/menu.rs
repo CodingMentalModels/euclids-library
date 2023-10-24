@@ -2,9 +2,9 @@ use bevy::prelude::*;
 
 use crate::game::{
     character::BodyComponent, events::OpenMenuEvent, player::PlayerComponent, resources::GameState,
-    ui_state::MenuUIState,
 };
 
+use crate::ui_state::MenuUIState;
 pub struct MenuPlugin;
 
 impl Plugin for MenuPlugin {

@@ -6,7 +6,6 @@ use super::character::{ActionClockComponent, BodyComponent, LocationComponent};
 use super::enemy::{AIComponent, EnemyComponent};
 use super::events::DamageEvent;
 use super::resources::RngResource;
-use super::ui_state::LogState;
 use super::{
     events::{CameraMovementEvent, TryMoveEvent},
     map::{MapLayer, SurfaceTile, Tile},
@@ -14,9 +13,10 @@ use super::{
     particle::{ParticleComponent, ParticleEmitterComponent, ParticleTiming},
     player::PlayerComponent,
     resources::{GameState, LoadedFont, LoadedMap},
-    ui_state::{AsciiTileAppearance, TileAppearance, TileGrid},
 };
 use crate::constants::*;
+use crate::ui_state::LogState;
+use crate::ui_state::{AsciiTileAppearance, TileAppearance, TileGrid};
 
 pub struct ExploringPlugin;
 

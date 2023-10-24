@@ -12,7 +12,7 @@ use crate::game::events::{CameraZoomEvent, UpdateUIEvent};
 use crate::game::interacting::{
     update_interacting_ui_state_system, Interactable, InteractingState,
 };
-use crate::game::ui_state::{InteractingUIState, LogState, MenuUIState};
+use crate::ui_state::{InteractingUIState, LogState, MenuUIState};
 
 pub struct UIPlugin;
 

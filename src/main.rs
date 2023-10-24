@@ -6,6 +6,7 @@ mod map_editor;
 mod menu;
 mod specs;
 mod ui;
+mod ui_state;
 
 use bevy::prelude::*;
 use bevy_mod_raycast::DefaultRaycastingPlugin;

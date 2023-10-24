@@ -3,9 +3,9 @@ use bevy::prelude::*;
 use egui::{Color32, RichText};
 use serde::{Deserialize, Serialize};
 
-use super::interacting::InteractingState;
-use super::map::{MapLayer, SurfaceTile, Tile, TileLocation};
 use crate::constants::*;
+use crate::game::interacting::InteractingState;
+use crate::game::map::{MapLayer, SurfaceTile, Tile, TileLocation};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Resource)]
 pub struct ExploringUIState {}

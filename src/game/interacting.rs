@@ -6,9 +6,9 @@ use super::{
     events::{ChooseDirectionEvent, ProgressPromptEvent, UpdateUIEvent},
     player::PlayerComponent,
     resources::GameState,
-    ui_state::InteractingUIState,
 };
 
+use crate::ui_state::InteractingUIState;
 pub struct InteractingPlugin;
 
 impl Plugin for InteractingPlugin {

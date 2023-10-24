@@ -10,5 +10,4 @@ pub mod particle;
 pub mod pause;
 pub mod player;
 pub mod resources;
-pub mod ui_state;
 pub mod world;

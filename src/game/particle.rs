@@ -6,12 +6,9 @@ use rand::Rng;
 use rand_distr::Exp;
 use serde::{Deserialize, Serialize};
 
-use super::{
-    events::Direction,
-    map::TileLocation,
-    ui_state::{AsciiTileAppearance, TileAppearance, TileGrid},
-};
+use super::{events::Direction, map::TileLocation};
 
+use crate::ui_state::{AsciiTileAppearance, TileAppearance, TileGrid};
 // Components
 
 #[derive(Component, Clone)]

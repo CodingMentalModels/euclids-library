@@ -9,8 +9,9 @@ use super::{
         ParticleAppearance, ParticleDirection, ParticleDuration, ParticleLocation,
         ParticleMovement, ParticleSpec, ParticleTiming,
     },
-    ui_state::{AsciiTileAppearance, ColorCode},
 };
+
+use crate::ui_state::{AsciiTileAppearance, ColorCode};
 
 #[derive(Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct Map(Vec<MapLayer>);
