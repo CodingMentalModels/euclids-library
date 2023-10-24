@@ -1,6 +1,10 @@
 use bevy::prelude::*;
+use bevy_egui::EguiContexts;
+use egui::{Align2, Color32, Frame};
 
+use crate::constants::*;
 use crate::game::map::Map;
+use crate::game::resources::GameState;
 
 // Basic Flow:
 //  1. Load existing or new?
@@ -16,8 +20,11 @@ pub struct MapEditorPlugin;
 
 impl Plugin for MapEditorPlugin {
     fn build(&self, app: &mut App) {
-        // app.add_systems(OnEnter(GameState::LoadingMap), load_map_system)
-        //     .add_systems(Update, movement_system.run_if(generalized_exploring()))
+        app.add_systems(OnEnter(GameState::EditingMap), initialize_map_editor_system)
+            .add_systems(
+                Update,
+                render_map_editor_system.run_if(in_state(GameState::EditingMap)),
+            );
     }
 }
 
@@ -27,7 +34,7 @@ impl Plugin for MapEditorPlugin {
 pub enum MapEditorUIState {
     #[default]
     NewOrLoadMenu,
-    SizeMenu,
+    ChooseSizeMenu,
     Editing(MapEditorEditingState),
 }
 
@@ -59,3 +66,42 @@ pub enum EditingMode {
 }
 
 // End Resources
+
+// Systems
+
+fn initialize_map_editor_system(mut commands: Commands) {
+    commands.insert_resource(MapEditorUIState::default());
+}
+
+fn render_map_editor_system(mut contexts: EguiContexts, ui_state: ResMut<MapEditorUIState>) {
+    let ctx = contexts.ctx_mut();
+    match *ui_state {
+        MapEditorUIState::NewOrLoadMenu => {
+            let size = egui::Vec2::new(ctx.screen_rect().width(), ctx.screen_rect().height())
+                * MENU_TO_SCREEN_RATIO;
+            egui::Window::new("menu-area")
+                .anchor(
+                    Align2::CENTER_TOP,
+                    egui::Vec2::new(
+                        0.,
+                        (ctx.screen_rect().height() * (1. - MENU_TO_SCREEN_RATIO) / 2.),
+                    ),
+                )
+                .fixed_size(size)
+                .frame(Frame::none().fill(Color32::BLACK))
+                .title_bar(false)
+                .show(ctx, |ui| {
+                    //  Workaround for https://users.rust-lang.org/t/egui-questions-regarding-window-size/88753/3
+                    ui.set_width(ui.available_width());
+                    ui.set_height(ui.available_height());
+
+                    ui.label("NewOrLoadMenu");
+                });
+        }
+        _ => {
+            unimplemented!()
+        }
+    }
+}
+
+// End Systems

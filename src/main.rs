@@ -21,6 +21,7 @@ use menu::MenuPlugin;
 
 use crate::game::resources::*;
 use crate::input::MouseoverRaycastSet;
+use crate::map_editor::map_editor::MapEditorPlugin;
 use crate::ui::UIPlugin;
 
 fn main() {
@@ -38,6 +39,7 @@ fn main() {
         .add_plugins(ExploringPlugin)
         .add_plugins(InteractingPlugin)
         .add_plugins(MenuPlugin)
+        .add_plugins(MapEditorPlugin)
         .add_state::<GameState>()
         .run();
 }

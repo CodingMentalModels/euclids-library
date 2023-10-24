@@ -1,1 +1,1 @@
-mod map_editor;
+pub mod map_editor;
