@@ -338,7 +338,7 @@ fn process_non_player_turn(
         Some(non_player_entity) => {
             for (entity, mut action_clock) in non_player_query.iter_mut() {
                 if entity == non_player_entity {
-                    if action_clock.tick(non_player_turn_length.0) {
+                    if action_clock.tick_and_is_finished(non_player_turn_length.0) {
                         log.log_string(&format!("{:?} takes its turn", non_player_entity));
                     } else {
                         log.log_string(&format!(

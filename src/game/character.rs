@@ -31,9 +31,13 @@ impl LocationComponent {
 pub struct ActionClockComponent(pub u8);
 
 impl ActionClockComponent {
-    pub fn tick(&mut self, amount: u8) -> bool {
-        self.0 = self.0.saturating_sub(amount);
+    pub fn tick_and_is_finished(&mut self, amount: u8) -> bool {
+        self.tick(amount);
         self.finished()
+    }
+
+    pub fn tick(&mut self, amount: u8) {
+        self.0 = self.0.saturating_sub(amount);
     }
 
     pub fn finished(&self) -> bool {
