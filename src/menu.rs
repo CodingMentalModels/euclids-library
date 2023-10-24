@@ -1,10 +1,11 @@
 use bevy::prelude::*;
+use egui::{Color32, RichText};
 
+use crate::constants::*;
 use crate::game::{
     character::BodyComponent, events::OpenMenuEvent, player::PlayerComponent, resources::GameState,
 };
 
-use crate::ui_state::MenuUIState;
 pub struct MenuPlugin;
 
 impl Plugin for MenuPlugin {
@@ -16,6 +17,27 @@ impl Plugin for MenuPlugin {
         .add_systems(OnExit(GameState::Menu), tear_down_menu_system);
     }
 }
+
+// Resources
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Resource)]
+pub struct MenuUIState {
+    options: Vec<String>,
+}
+
+impl MenuUIState {
+    pub fn new(options: Vec<String>) -> Self {
+        Self { options }
+    }
+
+    pub fn to_text(&self) -> RichText {
+        RichText::new(self.options.join("\n"))
+            .color(Color32::WHITE)
+            .size(DEFAULT_FONT_SIZE)
+    }
+}
+
+// End Resources
 
 // Systems
 

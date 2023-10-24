@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{events::Direction, map::TileLocation};
 
-use crate::ui_state::{AsciiTileAppearance, TileAppearance, TileGrid};
+use crate::game::map::{AsciiTileAppearance, TileAppearance, TileGrid};
 // Components
 
 #[derive(Component, Clone)]

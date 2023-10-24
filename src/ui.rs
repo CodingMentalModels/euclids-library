@@ -10,9 +10,9 @@ use crate::input::MouseoverRaycastSet;
 use crate::game::dialog::Dialog;
 use crate::game::events::{CameraZoomEvent, UpdateUIEvent};
 use crate::game::interacting::{
-    update_interacting_ui_state_system, Interactable, InteractingState,
+    update_interacting_ui_state_system, Interactable, InteractingState, InteractingUIState,
 };
-use crate::ui_state::{InteractingUIState, LogState, MenuUIState};
+use crate::menu::MenuUIState;
 
 pub struct UIPlugin;
 
@@ -157,6 +157,40 @@ fn render_menu_ui(mut contexts: EguiContexts, ui_state: ResMut<MenuUIState>) {
             ui.label(ui_state.to_text());
         });
 }
+
+// End Systems
+
+// Resources
+
+#[derive(Resource, Clone, Default)]
+pub struct LogState(Vec<egui::RichText>);
+
+impl LogState {
+    pub fn get_messages(&self) -> Vec<egui::RichText> {
+        self.0.clone()
+    }
+
+    pub fn log_string(&mut self, message: &str) {
+        self.0.push(
+            egui::RichText::new(message.to_string())
+                .size(LOG_TEXT_SIZE)
+                .color(egui::Color32::WHITE),
+        );
+    }
+
+    pub fn log_string_color(&mut self, message: &str, color: egui::Color32) {
+        self.0.push(
+            egui::RichText::new(message.to_string())
+                .color(color)
+                .size(LOG_TEXT_SIZE),
+        );
+    }
+
+    pub fn log(&mut self, message: egui::RichText) {
+        self.0.push(message);
+    }
+}
+// End Resources
 
 // Components
 

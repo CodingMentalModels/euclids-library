@@ -15,8 +15,8 @@ use super::{
     resources::{GameState, LoadedFont, LoadedMap},
 };
 use crate::constants::*;
-use crate::ui_state::LogState;
-use crate::ui_state::{AsciiTileAppearance, TileAppearance, TileGrid};
+use crate::game::map::{AsciiTileAppearance, TileAppearance, TileGrid};
+use crate::ui::LogState;
 
 pub struct ExploringPlugin;
 
@@ -54,6 +54,9 @@ impl Plugin for ExploringPlugin {
 }
 
 // Resources
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Resource)]
+pub struct ExploringUIState {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Resource)]
 pub struct ShouldSpawnMap(pub bool);
