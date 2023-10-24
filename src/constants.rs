@@ -1,5 +1,6 @@
 // Filepaths
 pub const NPC_DIRECTORY: &str = "assets/specs/npcs/";
+pub const MAP_DIRECTORY: &str = "assets/specs/maps/";
 
 // Game Parameters
 pub const DEFAULT_BODY_SIZE: u8 = 40;

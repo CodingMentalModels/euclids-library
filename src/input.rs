@@ -154,7 +154,7 @@ pub fn input_system(
     mut timer: ResMut<KeyHoldTimer>,
     time: Res<Time>,
     mut pause_unpause_event_writer: EventWriter<PauseUnpauseEvent>,
-    state_change_event_writer: EventWriter<StateChangeEvent>,
+    mut state_change_event_writer: EventWriter<StateChangeEvent>,
     camera_movement_event_writer: EventWriter<CameraMovementEvent>,
     zoom_event_writer: EventWriter<CameraZoomEvent>,
     open_menu_event_writer: EventWriter<OpenMenuEvent>,
@@ -169,6 +169,10 @@ pub fn input_system(
 
     if keyboard_input.just_pressed(KeyCode::Escape) {
         pause_unpause_event_writer.send(PauseUnpauseEvent);
+    }
+
+    if keyboard_input.pressed(KeyCode::M) && keyboard_input.pressed(KeyCode::ControlLeft) {
+        state_change_event_writer.send(StateChangeEvent(GameState::EditingMap));
     }
 
     match state.get() {

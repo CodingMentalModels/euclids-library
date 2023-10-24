@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 
+use crate::game::map::Map;
+
 // Basic Flow:
 //  1. Load existing or new?
 //  2. (If new) pick a name
@@ -18,3 +20,42 @@ impl Plugin for MapEditorPlugin {
         //     .add_systems(Update, movement_system.run_if(generalized_exploring()))
     }
 }
+
+// Resources
+
+#[derive(Debug, Default, PartialEq, Eq, Hash, Resource)]
+pub enum MapEditorUIState {
+    #[default]
+    NewOrLoadMenu,
+    SizeMenu,
+    Editing(MapEditorEditingState),
+}
+
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub struct MapEditorEditingState {
+    filename: String,
+    map: Map,
+    current_layer: usize,
+    mode: EditingMode,
+}
+
+impl MapEditorEditingState {
+    pub fn new(filename: String, map: Map, current_layer: usize, mode: EditingMode) -> Self {
+        Self {
+            filename,
+            map,
+            current_layer,
+            mode,
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+pub enum EditingMode {
+    #[default]
+    Normal,
+    Insert,
+    Block,
+}
+
+// End Resources
