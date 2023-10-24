@@ -1,6 +1,4 @@
-use std::collections::HashSet;
 use std::time::Duration;
-use std::unreachable;
 
 use bevy::prelude::*;
 use bevy_mod_raycast::{
@@ -8,14 +6,14 @@ use bevy_mod_raycast::{
 };
 
 use super::constants::*;
-use super::events::DamageEvent;
-use super::events::{
+use super::menu::MenuType;
+use crate::game::events::DamageEvent;
+use crate::game::events::{
     CameraMovementEvent, CameraZoomEvent, ChooseDirectionEvent, Direction, OpenMenuEvent,
     ProgressPromptEvent, StateChangeEvent, TryMoveEvent,
 };
-use super::menu::MenuType;
-use super::player::PlayerComponent;
-use super::resources::GameState;
+use crate::game::player::PlayerComponent;
+use crate::game::resources::GameState;
 
 pub struct InputPlugin;
 

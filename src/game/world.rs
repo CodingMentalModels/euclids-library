@@ -2,9 +2,9 @@ use bevy::prelude::*;
 
 use super::{
     enemy::{AICommand, Enemy},
-    map::{MapLayer, MapLocation, TileLocation},
+    map::{MapLocation, TileLocation},
     player::Player,
-    resources::{GameState, LoadedFont, NPCSpecs},
+    resources::{GameState, NPCSpecs},
 };
 
 pub struct WorldPlugin;

@@ -1,20 +1,27 @@
+mod assets;
+mod constants;
 mod game;
+mod input;
+mod map_editor;
+mod menu;
+mod specs;
+mod ui;
 
 use bevy::prelude::*;
 use bevy_mod_raycast::DefaultRaycastingPlugin;
 
-use game::assets::AssetsPlugin;
+use assets::AssetsPlugin;
 use game::events::EventsPlugin;
 use game::exploring::ExploringPlugin;
-use game::input::InputPlugin;
 use game::interacting::InteractingPlugin;
-use game::menu::MenuPlugin;
 use game::pause::PausePlugin;
 use game::world::WorldPlugin;
+use input::InputPlugin;
+use menu::MenuPlugin;
 
-use crate::game::input::MouseoverRaycastSet;
 use crate::game::resources::*;
-use crate::game::ui::UIPlugin;
+use crate::input::MouseoverRaycastSet;
+use crate::ui::UIPlugin;
 
 fn main() {
     App::new()

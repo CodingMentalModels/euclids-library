@@ -4,9 +4,9 @@ use bevy::prelude::*;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
-use super::constants::*;
 use super::map::{MapLocation, TileLocation};
 use super::resources::RngResource;
+use crate::constants::*;
 
 // Components
 #[derive(Component, Clone)]

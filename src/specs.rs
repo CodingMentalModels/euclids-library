@@ -1,7 +1,6 @@
 use std::collections::{BTreeMap, HashSet};
 
 use bevy::prelude::*;
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Resource)]
 pub struct SpecLookup<T: PartialEq + Eq>(BTreeMap<String, T>);

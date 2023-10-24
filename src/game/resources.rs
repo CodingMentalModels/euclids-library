@@ -3,9 +3,9 @@ use std::{collections::BTreeMap, sync::RwLock};
 use bevy::prelude::*;
 use rand::rngs::StdRng;
 
-use crate::game::constants::*;
+use crate::specs::SpecLookup;
 
-use super::{map::Map, npc::NPC, specs::SpecLookup};
+use super::{map::Map, npc::NPC};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Resource)]
 pub struct PausedState(pub GameState);

@@ -1,19 +1,17 @@
 use bevy::prelude::*;
 use rand::rngs::StdRng;
-use rand::thread_rng;
 use rand::SeedableRng;
 use std::fs;
 use std::path::Path;
 use std::sync::RwLock;
 
-use crate::game::constants::*;
+use crate::constants::*;
 use crate::game::resources::*;
 
-use super::dialog::Dialog;
-use super::map::MapLocation;
-use super::map::TileLocation;
-use super::npc::NPC;
-use super::specs::SpecLookup;
+use crate::game::dialog::Dialog;
+use crate::game::map::MapLocation;
+use crate::game::map::TileLocation;
+use crate::game::npc::NPC;
 
 pub struct AssetsPlugin;
 

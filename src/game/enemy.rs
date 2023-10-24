@@ -3,9 +3,9 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     character::{ActionClockComponent, LocationComponent},
-    constants::*,
     map::MapLocation,
 };
+use crate::constants::*;
 
 // Systems
 

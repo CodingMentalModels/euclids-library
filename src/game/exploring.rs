@@ -8,7 +8,6 @@ use super::events::DamageEvent;
 use super::resources::RngResource;
 use super::ui_state::LogState;
 use super::{
-    constants::*,
     events::{CameraMovementEvent, TryMoveEvent},
     map::{MapLayer, SurfaceTile, Tile},
     npc::NPCComponent,
@@ -17,6 +16,7 @@ use super::{
     resources::{GameState, LoadedFont, LoadedMap},
     ui_state::{AsciiTileAppearance, TileAppearance, TileGrid},
 };
+use crate::constants::*;
 
 pub struct ExploringPlugin;
 

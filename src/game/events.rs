@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use super::{character::Damage, map::TileLocation, menu::MenuType, resources::GameState};
+use super::{character::Damage, map::TileLocation, resources::GameState};
+use crate::menu::MenuType;
 
 pub struct EventsPlugin;
 
