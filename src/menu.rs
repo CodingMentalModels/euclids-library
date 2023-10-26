@@ -53,8 +53,9 @@ impl MenuUIState {
                 let labelled_options = options.iter().enumerate().collect::<HashMap<_, _>>();
                 self.display(
                     contexts,
-                    labelled_options
+                    options
                         .iter()
+                        .enumerate()
                         .map(|(i, option)| format!("{}. {}", i, option))
                         .collect::<Vec<_>>()
                         .join("\n"),
