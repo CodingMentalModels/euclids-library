@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::unimplemented;
 
 use bevy::prelude::*;
@@ -40,36 +41,34 @@ impl MenuUIState {
 
     pub fn render(
         &self,
-        mut contexts: &mut EguiContexts,
-        mut input_reader: &mut EventReader<MenuInputEvent>,
+        contexts: &mut EguiContexts,
+        input_reader: &mut EventReader<MenuInputEvent>,
     ) -> Option<&str> {
-        let mut ctx = contexts.ctx_mut();
         match &self.menu_type {
             MenuType::Info(lines) => {
-                let size = egui::Vec2::new(ctx.screen_rect().width(), ctx.screen_rect().height())
-                    * MENU_TO_SCREEN_RATIO;
-                egui::Window::new("menu-area")
-                    .anchor(
-                        Align2::CENTER_TOP,
-                        egui::Vec2::new(
-                            0.,
-                            (ctx.screen_rect().height() * (1. - MENU_TO_SCREEN_RATIO) / 2.),
-                        ),
-                    )
-                    .fixed_size(size)
-                    .frame(Frame::none().fill(Color32::BLACK))
-                    .title_bar(false)
-                    .show(ctx, |ui| {
-                        //  Workaround for https://users.rust-lang.org/t/egui-questions-regarding-window-size/88753/3
-                        ui.set_width(ui.available_width());
-                        ui.set_height(ui.available_height());
-
-                        ui.label(get_default_text(lines.join("\n")));
-                    });
+                self.display(contexts, lines.join("\n"));
                 return None;
             }
             MenuType::SelectFinite(options) => {
-                unimplemented!()
+                let labelled_options = options.iter().enumerate().collect::<HashMap<_, _>>();
+                self.display(
+                    contexts,
+                    labelled_options
+                        .iter()
+                        .map(|(i, option)| format!("{}. {}", i, option))
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                );
+                for input_event in input_reader.iter() {
+                    match get_digit_from_keycode(input_event.0) {
+                        None => {}
+                        Some(digit) => match labelled_options.get(&digit) {
+                            Some(option) => return Some(option),
+                            None => {}
+                        },
+                    };
+                }
+                return None;
             }
             MenuType::SearchAndSelect => {
                 unimplemented!()
@@ -78,6 +77,30 @@ impl MenuUIState {
                 unimplemented!()
             }
         }
+    }
+
+    fn display(&self, contexts: &mut EguiContexts, content: String) {
+        let mut ctx = contexts.ctx_mut();
+        let size = egui::Vec2::new(ctx.screen_rect().width(), ctx.screen_rect().height())
+            * MENU_TO_SCREEN_RATIO;
+        egui::Window::new("menu-area")
+            .anchor(
+                Align2::CENTER_TOP,
+                egui::Vec2::new(
+                    0.,
+                    (ctx.screen_rect().height() * (1. - MENU_TO_SCREEN_RATIO) / 2.),
+                ),
+            )
+            .fixed_size(size)
+            .frame(Frame::none().fill(Color32::BLACK))
+            .title_bar(false)
+            .show(ctx, |ui| {
+                //  Workaround for https://users.rust-lang.org/t/egui-questions-regarding-window-size/88753/3
+                ui.set_width(ui.available_width());
+                ui.set_height(ui.available_height());
+
+                ui.label(get_default_text(content));
+            });
     }
 }
 
@@ -129,3 +152,22 @@ pub enum ExploringMenuType {
     Character,
 }
 // End Helper Structs
+
+// Helper Functions
+
+fn get_digit_from_keycode(keycode: KeyCode) -> Option<usize> {
+    match keycode {
+        KeyCode::Key0 => Some(0),
+        KeyCode::Key1 => Some(1),
+        KeyCode::Key2 => Some(2),
+        KeyCode::Key3 => Some(3),
+        KeyCode::Key4 => Some(4),
+        KeyCode::Key5 => Some(5),
+        KeyCode::Key6 => Some(6),
+        KeyCode::Key7 => Some(7),
+        KeyCode::Key8 => Some(8),
+        KeyCode::Key9 => Some(9),
+        _ => None,
+    }
+}
+// End Helper Functions

@@ -189,11 +189,11 @@ fn render_log(ui: &mut Ui, log_state: &LogState) {
         });
 }
 
-fn get_underlined_text(s: String) -> egui::RichText {
+pub fn get_underlined_text(s: String) -> egui::RichText {
     get_default_text(s).underline()
 }
 
-fn get_default_text(s: String) -> egui::RichText {
+pub fn get_default_text(s: String) -> egui::RichText {
     egui::RichText::new(s)
         .size(DEFAULT_FONT_SIZE)
         .color(egui::Color32::WHITE)

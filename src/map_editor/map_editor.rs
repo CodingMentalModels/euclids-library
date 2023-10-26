@@ -26,14 +26,15 @@ pub struct MapEditorPlugin;
 
 impl Plugin for MapEditorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            OnEnter(GameState::EditingMapMenu),
-            initialize_map_editor_menu_system,
-        )
-        .add_systems(
-            Update,
-            render_map_editor_menu_system.run_if(in_state(GameState::EditingMapMenu)),
-        );
+        app.add_event::<MapEditorMenuEvent>()
+            .add_systems(
+                OnEnter(GameState::EditingMapMenu),
+                initialize_map_editor_menu_system,
+            )
+            .add_systems(
+                Update,
+                render_map_editor_menu_system.run_if(in_state(GameState::EditingMapMenu)),
+            );
     }
 }
 
