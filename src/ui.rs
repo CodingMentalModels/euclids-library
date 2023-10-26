@@ -34,8 +34,7 @@ impl Plugin for UIPlugin {
                 render_interacting_ui
                     .after(update_interacting_ui_state_system)
                     .run_if(in_state(GameState::Interacting)),
-            )
-            .add_systems(Update, render_menu_ui.run_if(in_state(GameState::Menu)));
+            );
 
         app.insert_resource(MaterialCache::empty());
     }
@@ -132,30 +131,6 @@ fn render_interacting_ui(mut contexts: EguiContexts, ui_state: ResMut<Interactin
             }
         },
     }
-}
-
-fn render_menu_ui(mut contexts: EguiContexts, ui_state: ResMut<MenuUIState>) {
-    let ctx = contexts.ctx_mut();
-    let size = egui::Vec2::new(ctx.screen_rect().width(), ctx.screen_rect().height())
-        * MENU_TO_SCREEN_RATIO;
-    egui::Window::new("menu-area")
-        .anchor(
-            Align2::CENTER_TOP,
-            egui::Vec2::new(
-                0.,
-                (ctx.screen_rect().height() * (1. - MENU_TO_SCREEN_RATIO) / 2.),
-            ),
-        )
-        .fixed_size(size)
-        .frame(Frame::none().fill(Color32::BLACK))
-        .title_bar(false)
-        .show(ctx, |ui| {
-            //  Workaround for https://users.rust-lang.org/t/egui-questions-regarding-window-size/88753/3
-            ui.set_width(ui.available_width());
-            ui.set_height(ui.available_height());
-
-            ui.label(ui_state.to_text());
-        });
 }
 
 // End Systems

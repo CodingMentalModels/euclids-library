@@ -1,11 +1,16 @@
+use std::unimplemented;
+
 use bevy::prelude::*;
 use bevy_egui::EguiContexts;
 use egui::{Align2, Color32, Frame};
 
 use crate::constants::*;
+use crate::game::events::MenuInputEvent;
 use crate::game::map::Map;
 use crate::game::resources::GameState;
+use crate::menu::{MenuType, MenuUIState};
 
+// Paradigm: Vim inspired map editor.  If vim has a way to do it, then we do it that way.
 // Basic Flow:
 //  1. Load existing or new?
 //  2. (If new) pick a name
@@ -13,6 +18,7 @@ use crate::game::resources::GameState;
 //  4. Use vim-like keybindings to move around, insert, copy, etc.
 //
 //  Everything should save on any change
+//  But, within the current session, undo and redo should be possible.
 //  Recording macros should be possible
 //  Block mode should create rectangular blocks rather than be line-based etc.
 
@@ -20,33 +26,35 @@ pub struct MapEditorPlugin;
 
 impl Plugin for MapEditorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::EditingMap), initialize_map_editor_system)
-            .add_systems(
-                Update,
-                render_map_editor_system.run_if(in_state(GameState::EditingMap)),
-            );
+        app.add_systems(
+            OnEnter(GameState::EditingMapMenu),
+            initialize_map_editor_menu_system,
+        )
+        .add_systems(
+            Update,
+            render_map_editor_menu_system.run_if(in_state(GameState::EditingMapMenu)),
+        );
     }
 }
 
 // Resources
-
 #[derive(Debug, Default, PartialEq, Eq, Hash, Resource)]
-pub enum MapEditorUIState {
+pub enum MapEditorMenuUIState {
     #[default]
     NewOrLoadMenu,
-    ChooseSizeMenu,
-    Editing(MapEditorEditingState),
+    NewMapOptionsMenu,
+    LoadMapMenu(Vec<String>),
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
-pub struct MapEditorEditingState {
+#[derive(Debug, PartialEq, Eq, Hash, Resource)]
+pub struct MapEditorEditingUIState {
     filename: String,
     map: Map,
     current_layer: usize,
     mode: EditingMode,
 }
 
-impl MapEditorEditingState {
+impl MapEditorEditingUIState {
     pub fn new(filename: String, map: Map, current_layer: usize, mode: EditingMode) -> Self {
         Self {
             filename,
@@ -67,39 +75,49 @@ pub enum EditingMode {
 
 // End Resources
 
-// Systems
-
-fn initialize_map_editor_system(mut commands: Commands) {
-    commands.insert_resource(MapEditorUIState::default());
+// Events
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Event)]
+pub enum MapEditorMenuEvent {
+    NewMap(String),
+    LoadMap(String),
 }
 
-fn render_map_editor_system(mut contexts: EguiContexts, ui_state: ResMut<MapEditorUIState>) {
-    let ctx = contexts.ctx_mut();
-    match *ui_state {
-        MapEditorUIState::NewOrLoadMenu => {
-            let size = egui::Vec2::new(ctx.screen_rect().width(), ctx.screen_rect().height())
-                * MENU_TO_SCREEN_RATIO;
-            egui::Window::new("menu-area")
-                .anchor(
-                    Align2::CENTER_TOP,
-                    egui::Vec2::new(
-                        0.,
-                        (ctx.screen_rect().height() * (1. - MENU_TO_SCREEN_RATIO) / 2.),
-                    ),
-                )
-                .fixed_size(size)
-                .frame(Frame::none().fill(Color32::BLACK))
-                .title_bar(false)
-                .show(ctx, |ui| {
-                    //  Workaround for https://users.rust-lang.org/t/egui-questions-regarding-window-size/88753/3
-                    ui.set_width(ui.available_width());
-                    ui.set_height(ui.available_height());
+// End Events
 
-                    ui.label("NewOrLoadMenu");
-                });
+// Systems
+fn initialize_map_editor_menu_system(mut commands: Commands) {
+    commands.insert_resource(MapEditorMenuUIState::default());
+}
+
+fn render_map_editor_menu_system(
+    mut contexts: EguiContexts,
+    mut input_event_reader: EventReader<MenuInputEvent>,
+    mut map_editor_menu_event_writer: EventWriter<MapEditorMenuEvent>,
+    mut ui_state: ResMut<MapEditorMenuUIState>,
+) {
+    match &mut *ui_state {
+        MapEditorMenuUIState::NewOrLoadMenu => {
+            let menu = MenuUIState::new(MenuType::SelectFinite(vec![
+                "New Map".to_string(),
+                "Load Map".to_string(),
+            ]));
+            let response = menu.render(&mut contexts, &mut input_event_reader);
+            // TODO Load this from folder
+            let maps = vec![];
+            match response {
+                Some("New Map") => *ui_state = MapEditorMenuUIState::NewMapOptionsMenu,
+                Some("Load Map") => *ui_state = MapEditorMenuUIState::LoadMapMenu(maps),
+                Some(_) => panic!("There are only two options."),
+                None => {}
+            };
         }
-        _ => {
-            unimplemented!()
+        MapEditorMenuUIState::NewMapOptionsMenu => {
+            let menu = MenuUIState::new(MenuType::Info(vec!["New Map Options Menu".to_string()]));
+            let _response = menu.render(&mut contexts, &mut input_event_reader);
+        }
+        MapEditorMenuUIState::LoadMapMenu(maps) => {
+            let menu = MenuUIState::new(MenuType::Info(vec!["Load Map Menu".to_string()]));
+            let _response = menu.render(&mut contexts, &mut input_event_reader);
         }
     }
 }
