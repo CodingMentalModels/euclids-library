@@ -21,6 +21,7 @@ impl Plugin for UIPlugin {
         let generalized_exploring =
             || in_state(GameState::Exploring).or_else(in_state(GameState::NonPlayerTurns));
         app.add_event::<UpdateUIEvent>()
+            .add_event::<ToastMessageEvent>()
             .add_plugins(EguiPlugin)
             .add_systems(OnEnter(GameState::LoadingUI), configure_visuals)
             .add_systems(OnEnter(GameState::LoadingUI), ui_load_system)
@@ -39,6 +40,13 @@ impl Plugin for UIPlugin {
         app.insert_resource(MaterialCache::empty());
     }
 }
+
+// Events
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Event)]
+pub struct ToastMessageEvent(pub String);
+
+// End Events
 
 // Systems
 fn configure_visuals(mut ctx: EguiContexts) {

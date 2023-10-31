@@ -3,7 +3,7 @@ use std::unimplemented;
 
 use bevy::prelude::*;
 use bevy_egui::EguiContexts;
-use egui::{Align2, Color32, Frame, RichText};
+use egui::{Align2, Color32, Frame, Response, RichText, Ui};
 
 use crate::constants::*;
 use crate::game::events::MenuInputEvent;
@@ -32,26 +32,31 @@ pub struct MenuToShow(pub MenuUIState);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MenuUIState {
     menu_type: MenuType,
+    buffer: String,
 }
 
 impl MenuUIState {
     pub fn new(menu_type: MenuType) -> Self {
-        Self { menu_type }
+        Self {
+            menu_type,
+            buffer: "".to_string(),
+        }
     }
 
     pub fn render(
-        &self,
+        &mut self,
         contexts: &mut EguiContexts,
         input_reader: &mut EventReader<MenuInputEvent>,
-    ) -> Option<&str> {
+    ) -> Option<String> {
+        let mut buffer = self.buffer.clone();
         match &self.menu_type {
             MenuType::Info(lines) => {
-                self.display(contexts, lines.join("\n"));
+                self.display_content(contexts, lines.join("\n"));
                 return None;
             }
             MenuType::SelectFinite(options) => {
                 let labelled_options = options.iter().enumerate().collect::<HashMap<_, _>>();
-                self.display(
+                self.display_content(
                     contexts,
                     options
                         .iter()
@@ -64,7 +69,7 @@ impl MenuUIState {
                     match get_digit_from_keycode(input_event.0) {
                         None => {}
                         Some(digit) => match labelled_options.get(&digit) {
-                            Some(option) => return Some(option),
+                            Some(option) => return Some(option.to_string()),
                             None => {}
                         },
                     };
@@ -74,14 +79,30 @@ impl MenuUIState {
             MenuType::SearchAndSelect => {
                 unimplemented!()
             }
-            MenuType::TextInput => {
-                unimplemented!()
+            MenuType::TextInput(prompt) => {
+                let to_show_fn = |ui: &mut Ui| {
+                    ui.label(get_default_text(prompt.to_string()));
+                    let response = ui.add(egui::TextEdit::singleline(&mut buffer));
+                    if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                        let to_return = Some(buffer.clone());
+                        return to_return;
+                    } else {
+                        return None;
+                    }
+                };
+                let to_return = self.display(contexts, to_show_fn);
+                self.buffer = buffer;
+                return to_return;
             }
         }
     }
 
-    fn display(&self, contexts: &mut EguiContexts, content: String) {
-        let mut ctx = contexts.ctx_mut();
+    fn display(
+        &self,
+        contexts: &mut EguiContexts,
+        to_show_fn: impl FnOnce(&mut Ui) -> Option<String>,
+    ) -> Option<String> {
+        let ctx = contexts.ctx_mut();
         let size = egui::Vec2::new(ctx.screen_rect().width(), ctx.screen_rect().height())
             * MENU_TO_SCREEN_RATIO;
         egui::Window::new("menu-area")
@@ -100,8 +121,18 @@ impl MenuUIState {
                 ui.set_width(ui.available_width());
                 ui.set_height(ui.available_height());
 
-                ui.label(get_default_text(content));
-            });
+                return to_show_fn(ui);
+            })
+            .and_then(|inner_response| inner_response.inner)
+            .flatten()
+    }
+
+    fn display_content(&self, contexts: &mut EguiContexts, content: String) {
+        let to_show_fn = |ui: &mut Ui| {
+            ui.label(get_default_text(content));
+            return None;
+        };
+        self.display(contexts, to_show_fn);
     }
 }
 
@@ -110,7 +141,7 @@ pub enum MenuType {
     Info(Vec<String>),
     SelectFinite(Vec<String>),
     SearchAndSelect,
-    TextInput,
+    TextInput(String),
 }
 
 // End Resources
@@ -137,7 +168,7 @@ fn open_exploring_menu_system(
 fn render_menu(
     mut contexts: EguiContexts,
     mut event_reader: EventReader<MenuInputEvent>,
-    menu: Res<MenuToShow>,
+    mut menu: ResMut<MenuToShow>,
 ) {
     let _response = menu.0.render(&mut contexts, &mut event_reader);
 }
