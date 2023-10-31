@@ -18,7 +18,7 @@ impl Plugin for MenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            open_menu_system.run_if(in_state(GameState::Exploring)),
+            open_exploring_menu_system.run_if(in_state(GameState::Exploring)),
         )
         .add_systems(Update, render_menu.run_if(in_state(GameState::PlayerMenu)))
         .add_systems(OnExit(GameState::PlayerMenu), tear_down_menu_system);
@@ -117,7 +117,7 @@ pub enum MenuType {
 
 // Systems
 
-fn open_menu_system(
+fn open_exploring_menu_system(
     mut commands: Commands,
     mut open_menu_event_reader: EventReader<OpenMenuEvent>,
     player_query: Query<&BodyComponent, With<PlayerComponent>>,
