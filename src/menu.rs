@@ -83,7 +83,8 @@ impl MenuUIState {
                 let to_show_fn = |ui: &mut Ui| {
                     ui.label(get_default_text(prompt.to_string()));
                     let response = ui.add(egui::TextEdit::singleline(&mut buffer));
-                    if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                    response.request_focus();
+                    if ui.input(|i| i.key_pressed(egui::Key::Enter)) {
                         let to_return = Some(buffer.clone());
                         return to_return;
                     } else {
