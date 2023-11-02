@@ -35,7 +35,12 @@ impl Plugin for UIPlugin {
                 render_interacting_ui
                     .after(update_interacting_ui_state_system)
                     .run_if(in_state(GameState::Interacting)),
-            );
+            )
+            .add_systems(
+                Update,
+                trigger_toast_message.run_if(on_event::<ToastMessageEvent>()),
+            )
+            .add_systems(Update, show_toast_message);
 
         app.insert_resource(MaterialCache::empty());
     }
@@ -93,13 +98,42 @@ fn update_camera_zoom(
     }
 }
 
+fn trigger_toast_message(mut commands: Commands, mut event_reader: EventReader<ToastMessageEvent>) {
+    for event in event_reader.iter() {
+        commands.insert_resource(ToastMessage(
+            Timer::from_seconds(TOAST_MESSAGE_TIME_IN_SECONDS, TimerMode::Once),
+            event.0.clone(),
+        ));
+    }
+}
+
+fn show_toast_message(
+    mut commands: Commands,
+    mut contexts: EguiContexts,
+    time: Res<Time>,
+    toast_message: Option<ResMut<ToastMessage>>,
+) {
+    match toast_message {
+        Some(mut toast_message) => {
+            let ctx = contexts.ctx_mut();
+            egui::TopBottomPanel::top("top-panel").show(ctx, |ui| {
+                ui.label(get_warning_text(toast_message.1.clone()));
+            });
+            if toast_message.0.tick(time.delta()).finished() {
+                commands.remove_resource::<ToastMessage>();
+            }
+        }
+        None => {}
+    }
+}
+
 fn render_exploring_ui(mut contexts: EguiContexts, log_state: Res<LogState>) {
     let ctx = contexts.ctx_mut();
 
     egui::TopBottomPanel::bottom("bottom-panel").show(ctx, |ui| {
         egui::SidePanel::left("log-panel")
             .min_width(LOG_WINDOW_SIZE.0)
-            .show_inside(ui, |mut ui| {
+            .show_inside(ui, |ui| {
                 render_log(ui, &log_state);
             });
     });
@@ -144,6 +178,8 @@ fn render_interacting_ui(mut contexts: EguiContexts, ui_state: ResMut<Interactin
 // End Systems
 
 // Resources
+#[derive(Resource, Clone, Default)]
+pub struct ToastMessage(Timer, String);
 
 #[derive(Resource, Clone, Default)]
 pub struct LogState(Vec<egui::RichText>);
@@ -207,4 +243,9 @@ pub fn get_default_text(s: String) -> egui::RichText {
         .color(egui::Color32::WHITE)
 }
 
+pub fn get_warning_text(s: String) -> egui::RichText {
+    egui::RichText::new(s)
+        .size(DEFAULT_FONT_SIZE)
+        .color(egui::Color32::RED)
+}
 // End Helper Functions
