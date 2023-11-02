@@ -4,6 +4,8 @@ use bevy::utils::Duration;
 use bevy::{ecs::system::EntityCommands, prelude::*};
 use serde::{Deserialize, Serialize};
 
+use super::events::BoundStateComponent;
+use super::resources::GameState;
 use super::{
     events::Direction,
     particle::{
@@ -348,11 +350,12 @@ impl TileGrid {
         }
     }
 
-    pub fn render(&self, commands: &mut Commands, font: Handle<Font>) {
+    pub fn render(&self, commands: &mut Commands, font: Handle<Font>, bound_state: GameState) {
         for (location, tile) in self.enumerated().iter() {
             let _tile_entity = tile.render(
                 &mut (commands.spawn_empty()),
                 font.clone(),
+                bound_state,
                 Self::tile_to_world_coordinates(*location),
             );
         }
@@ -416,6 +419,7 @@ impl TileAppearance {
         &self,
         entity_commands: &mut EntityCommands,
         font: Handle<Font>,
+        bound_state: GameState,
         location: Vec2,
     ) -> Entity {
         match self {
@@ -432,6 +436,7 @@ impl TileAppearance {
                     transform: Transform::from_translation(location.extend(0.)),
                     ..Default::default()
                 })
+                .insert(BoundStateComponent(bound_state))
                 .id(),
             TileAppearance::Sprite(_) => panic!("Not implemented yet."),
         }

@@ -89,6 +89,9 @@ impl ChooseDirectionEvent {
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
 pub struct StateChangeEvent(pub GameState);
 
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
+pub struct DespawnBoundEntitiesEvent(pub GameState);
+
 #[derive(Debug, Clone, Event)]
 pub struct DamageEvent(pub Entity, pub Damage);
 
@@ -133,3 +136,10 @@ impl Direction {
 }
 
 // End Events
+
+// Components
+
+#[derive(Component, Clone, Copy)]
+pub struct BoundStateComponent(pub GameState);
+
+// End Components

@@ -8,8 +8,8 @@ use bevy_mod_raycast::{
 use super::constants::*;
 use super::menu::MenuType;
 use crate::game::events::{
-    CameraMovementEvent, CameraZoomEvent, ChooseDirectionEvent, Direction, OpenMenuEvent,
-    ProgressPromptEvent, StateChangeEvent, TryMoveEvent,
+    CameraMovementEvent, CameraZoomEvent, ChooseDirectionEvent, DespawnBoundEntitiesEvent,
+    Direction, OpenMenuEvent, ProgressPromptEvent, StateChangeEvent, TryMoveEvent,
 };
 use crate::game::events::{DamageEvent, MenuInputEvent};
 use crate::game::player::PlayerComponent;
@@ -30,6 +30,7 @@ impl Plugin for InputPlugin {
             .add_event::<StateChangeEvent>()
             .add_event::<ChooseDirectionEvent>()
             .add_event::<ProgressPromptEvent>()
+            .add_event::<DespawnBoundEntitiesEvent>()
             .insert_resource(KeyHoldTimer::default())
             .add_systems(
                 First,

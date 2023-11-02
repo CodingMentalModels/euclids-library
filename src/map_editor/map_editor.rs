@@ -6,10 +6,9 @@ use bevy::prelude::*;
 use bevy_egui::EguiContexts;
 
 use crate::constants::*;
-use crate::game::events::MenuInputEvent;
-use crate::game::exploring::DespawnNonCameraEntitiesEvent;
-use crate::game::map::{Map, MapLayer, Tile};
-use crate::game::resources::GameState;
+use crate::game::events::{DespawnBoundEntitiesEvent, MenuInputEvent};
+use crate::game::map::{Map, MapLayer, Tile, TileGrid};
+use crate::game::resources::{GameState, LoadedFont};
 use crate::menu::{MenuType, MenuUIState};
 use crate::ui::ToastMessageEvent;
 
@@ -44,7 +43,8 @@ impl Plugin for MapEditorPlugin {
                     in_state(GameState::EditingMapMenu)
                         .and_then(on_event::<MapEditorSwitchMenuEvent>()),
                 ),
-            );
+            )
+            .add_systems(OnEnter(GameState::EditingMap), spawn_map_system);
     }
 }
 
@@ -161,7 +161,7 @@ fn render_map_editor_menu_system(
     mut switch_menu_event_writer: EventWriter<MapEditorSwitchMenuEvent>,
     mut toast_message_event_writer: EventWriter<ToastMessageEvent>,
     mut ui_state: ResMut<MapEditorMenuUIState>,
-    mut despawn_event_writer: EventWriter<DespawnNonCameraEntitiesEvent>,
+    mut despawn_event_writer: EventWriter<DespawnBoundEntitiesEvent>,
 ) {
     let response = ui_state.render(&mut contexts, &mut input_event_reader);
     match &mut ui_state.menu_type {
@@ -201,7 +201,7 @@ fn render_map_editor_menu_system(
                         current_layer,
                         EditingMode::Normal,
                     );
-                    despawn_event_writer.send(DespawnNonCameraEntitiesEvent);
+                    despawn_event_writer.send(DespawnBoundEntitiesEvent(GameState::Exploring));
                     commands.insert_resource(ui_state);
                     commands.insert_resource(NextState(Some(GameState::EditingMap)));
                 }
@@ -215,6 +215,34 @@ fn render_map_editor_menu_system(
             unimplemented!()
         }
     }
+}
+
+fn spawn_map_system(
+    mut commands: Commands,
+    ui_state: Res<MapEditorEditingUIState>,
+    font: Res<LoadedFont>,
+) {
+    let map_layer = ui_state
+        .map
+        .get_layer(ui_state.current_layer)
+        .expect("Current layer must exist.");
+
+    let tile_grid = TileGrid::from_map_layer(map_layer.clone());
+    tile_grid.render(&mut commands, font.0.clone(), GameState::EditingMap);
+
+    map_layer
+        .as_location_and_tile_vector()
+        .into_iter()
+        .for_each(|(location, tile)| {
+            if let Some(particle_spec) = tile.get_surface().get_particle_spec() {
+                particle_spec.render(
+                    &mut commands,
+                    font.0.clone(),
+                    GameState::EditingMap,
+                    location,
+                );
+            };
+        });
 }
 
 // End Systems

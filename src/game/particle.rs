@@ -6,9 +6,13 @@ use rand::Rng;
 use rand_distr::Exp;
 use serde::{Deserialize, Serialize};
 
-use super::{events::Direction, map::TileLocation};
+use super::events::BoundStateComponent;
+use super::resources::GameState;
+use super::{
+    events::Direction,
+    map::{AsciiTileAppearance, TileAppearance, TileGrid, TileLocation},
+};
 
-use crate::game::map::{AsciiTileAppearance, TileAppearance, TileGrid};
 // Components
 
 #[derive(Component, Clone)]
@@ -22,7 +26,13 @@ impl ParticleEmitterComponent {
         Self { spec, timer }
     }
 
-    pub fn emit(&self, commands: &mut Commands, font: Handle<Font>, origin: Vec2) -> Entity {
+    pub fn emit(
+        &self,
+        commands: &mut Commands,
+        font: Handle<Font>,
+        bound_state: GameState,
+        origin: Vec2,
+    ) -> Entity {
         let movement = self.spec.movement.clone();
         let appearance = self.spec.appearance.clone();
         let timer = movement.get_timer();
@@ -31,7 +41,12 @@ impl ParticleEmitterComponent {
         let location = self.spec.emission_location.get_relative_location();
 
         let position = origin + TileGrid::tile_to_world_coordinates(location);
-        let entity = initial_appearance.render(&mut commands.spawn_empty(), font.clone(), position);
+        let entity = initial_appearance.render(
+            &mut commands.spawn_empty(),
+            font.clone(),
+            bound_state,
+            position,
+        );
 
         commands
             .entity(entity)
@@ -90,14 +105,18 @@ impl ParticleSpec {
         &self,
         commands: &mut Commands,
         font: Handle<Font>,
+        bound_state: GameState,
         location: TileLocation,
     ) -> Entity {
         let initial_appearance = match &self.appearance {
             ParticleAppearance::Constant(appearance) => appearance.clone(),
         };
         let entity = TileAppearance::Ascii(initial_appearance).render(
-            &mut commands.spawn_empty(),
+            &mut commands
+                .spawn_empty()
+                .insert(BoundStateComponent(bound_state)),
             font.clone(),
+            bound_state,
             TileGrid::tile_to_world_coordinates(location),
         );
         commands
