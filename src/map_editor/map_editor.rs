@@ -1,15 +1,15 @@
-use std::unimplemented;
+use std::ffi::OsStr;
+use std::path::Path;
+use std::result::Result;
 
 use bevy::prelude::*;
 use bevy_egui::EguiContexts;
-use egui::{Align2, Color32, Frame};
-use sanitize_filename::is_sanitized;
 
 use crate::constants::*;
 use crate::game::events::MenuInputEvent;
 use crate::game::map::{Map, MapLayer, Tile};
 use crate::game::resources::GameState;
-use crate::menu::{MenuToShow, MenuType, MenuUIState};
+use crate::menu::{MenuType, MenuUIState};
 use crate::ui::ToastMessageEvent;
 
 // Paradigm: Vim inspired map editor.  If vim has a way to do it, then we do it that way.
@@ -28,7 +28,7 @@ pub struct MapEditorPlugin;
 
 impl Plugin for MapEditorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<MapEditorMenuEvent>()
+        app.add_event::<MapEditorSwitchMenuEvent>()
             .add_systems(
                 OnEnter(GameState::EditingMapMenu),
                 initialize_map_editor_menu_system,
@@ -36,13 +36,67 @@ impl Plugin for MapEditorPlugin {
             .add_systems(
                 Update,
                 render_map_editor_menu_system.run_if(in_state(GameState::EditingMapMenu)),
+            )
+            .add_systems(
+                Update,
+                switch_menu_system.run_if(
+                    in_state(GameState::EditingMapMenu)
+                        .and_then(on_event::<MapEditorSwitchMenuEvent>()),
+                ),
             );
     }
 }
 
 // Resources
-#[derive(Debug, Default, PartialEq, Eq, Hash, Resource)]
-pub enum MapEditorMenuUIState {
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Resource)]
+pub struct MapEditorMenuUIState {
+    menu_type: MapEditorMenuType,
+    menu_state: MenuUIState,
+}
+
+impl Default for MapEditorMenuUIState {
+    fn default() -> Self {
+        Self::from_type(MapEditorMenuType::default())
+    }
+}
+
+impl MapEditorMenuUIState {
+    pub fn new(menu_type: MapEditorMenuType, menu_state: MenuUIState) -> Self {
+        Self {
+            menu_type,
+            menu_state,
+        }
+    }
+
+    pub fn from_type(menu_type: MapEditorMenuType) -> Self {
+        let menu_state = match &menu_type {
+            MapEditorMenuType::NewOrLoadMenu => MenuUIState::new(MenuType::SelectFinite(vec![
+                "New Map".to_string(),
+                "Load Map".to_string(),
+            ])),
+            MapEditorMenuType::NewMapNameMenu => {
+                MenuUIState::new(MenuType::TextInput("Map Name:".to_string()))
+            }
+            MapEditorMenuType::NewMapSizeMenu(_buffer) => {
+                MenuUIState::new(MenuType::TextInput("Map Size:".to_string()))
+            }
+            MapEditorMenuType::LoadMapMenu(_maps) => {
+                MenuUIState::new(MenuType::Info(vec!["Load Map Menu".to_string()]))
+            }
+        };
+        Self::new(menu_type, menu_state)
+    }
+
+    pub fn render(
+        &mut self,
+        contexts: &mut EguiContexts,
+        input_reader: &mut EventReader<MenuInputEvent>,
+    ) -> Option<String> {
+        self.menu_state.render(contexts, input_reader)
+    }
+}
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub enum MapEditorMenuType {
     #[default]
     NewOrLoadMenu,
     NewMapNameMenu,
@@ -80,11 +134,8 @@ pub enum EditingMode {
 // End Resources
 
 // Events
-#[derive(Debug, Clone, Hash, PartialEq, Eq, Event)]
-pub enum MapEditorMenuEvent {
-    NewMap(String),
-    LoadMap(String),
-}
+#[derive(Debug, Hash, PartialEq, Eq, Event)]
+pub struct MapEditorSwitchMenuEvent(MapEditorMenuType);
 
 // End Events
 
@@ -93,72 +144,72 @@ fn initialize_map_editor_menu_system(mut commands: Commands) {
     commands.insert_resource(MapEditorMenuUIState::default());
 }
 
+fn switch_menu_system(
+    mut switch_menu_event_reader: EventReader<MapEditorSwitchMenuEvent>,
+    mut ui_state: ResMut<MapEditorMenuUIState>,
+) {
+    for event in switch_menu_event_reader.iter() {
+        *ui_state = MapEditorMenuUIState::from_type(event.0.clone());
+    }
+}
+
 fn render_map_editor_menu_system(
     mut commands: Commands,
     mut contexts: EguiContexts,
     mut input_event_reader: EventReader<MenuInputEvent>,
-    mut map_editor_menu_event_writer: EventWriter<MapEditorMenuEvent>,
+    mut switch_menu_event_writer: EventWriter<MapEditorSwitchMenuEvent>,
     mut toast_message_event_writer: EventWriter<ToastMessageEvent>,
     mut ui_state: ResMut<MapEditorMenuUIState>,
-    mut menu_to_show: ResMut<MenuToShow>,
 ) {
-    match &mut *ui_state {
-        MapEditorMenuUIState::NewOrLoadMenu => {
-            let mut menu = MenuUIState::new(MenuType::SelectFinite(vec![
-                "New Map".to_string(),
-                "Load Map".to_string(),
-            ]));
-            let response = menu.render(&mut contexts, &mut input_event_reader);
+    let response = ui_state.render(&mut contexts, &mut input_event_reader);
+    match &mut ui_state.menu_type {
+        MapEditorMenuType::NewOrLoadMenu => {
             // TODO Load this from folder
             let maps = vec![];
             match response.as_deref() {
-                Some("New Map") => *ui_state = MapEditorMenuUIState::NewMapNameMenu,
-                Some("Load Map") => *ui_state = MapEditorMenuUIState::LoadMapMenu(maps),
+                Some("New Map") => switch_menu_event_writer
+                    .send(MapEditorSwitchMenuEvent(MapEditorMenuType::NewMapNameMenu)),
+                Some("Load Map") => switch_menu_event_writer.send(MapEditorSwitchMenuEvent(
+                    MapEditorMenuType::LoadMapMenu(maps),
+                )),
                 Some(_) => panic!("There are only two options."),
                 None => {}
             };
         }
-        MapEditorMenuUIState::NewMapNameMenu => {
-            let mut menu = MenuUIState::new(MenuType::TextInput("Map Name:".to_string()));
-            let response = menu.render(&mut contexts, &mut input_event_reader);
-            match response {
-                Some(map_name) => match sanitize_map_name(&map_name) {
-                    Ok(name) => {
-                        *ui_state = MapEditorMenuUIState::NewMapSizeMenu(name);
-                    }
-                    Err(e) => toast_message_event_writer.send(ToastMessageEvent(e.to_string())),
-                },
-                None => {}
-            }
-        }
-        MapEditorMenuUIState::NewMapSizeMenu(map_name) => {
-            let mut menu = MenuUIState::new(MenuType::TextInput("Map Size:".to_string()));
-            let response = menu.render(&mut contexts, &mut input_event_reader);
-            match response {
-                Some(map_size) => match map_size.parse() {
-                    Ok(size) => {
-                        let filename = format!("{}.json", map_name);
-                        let map = MapLayer::fill(size, size, Tile::empty_ground()).into();
-                        let current_layer = 0;
-                        let ui_state = MapEditorEditingUIState::new(
-                            filename,
-                            map,
-                            current_layer,
-                            EditingMode::Normal,
-                        );
-                        commands.insert_resource(ui_state);
-                        commands.insert_resource(NextState(Some(GameState::EditingMap)));
-                    }
-                    Err(e) => {
-                        toast_message_event_writer.send(ToastMessageEvent(e.to_string()));
-                    }
-                },
-                None => {}
-            }
-        }
-        MapEditorMenuUIState::LoadMapMenu(maps) => {
-            let mut menu = MenuUIState::new(MenuType::Info(vec!["Load Map Menu".to_string()]));
-            let _response = menu.render(&mut contexts, &mut input_event_reader);
+        MapEditorMenuType::NewMapNameMenu => match response {
+            Some(map_name) => match sanitize_map_name(&map_name) {
+                Ok(name) => {
+                    switch_menu_event_writer.send(MapEditorSwitchMenuEvent(
+                        MapEditorMenuType::NewMapSizeMenu(name.to_string()),
+                    ));
+                }
+                Err(e) => toast_message_event_writer.send(ToastMessageEvent(e.to_string())),
+            },
+            None => {}
+        },
+        MapEditorMenuType::NewMapSizeMenu(map_name) => match response {
+            Some(map_size) => match map_size.parse() {
+                Ok(size) => {
+                    let filename = format!("{}.json", map_name);
+                    let map = MapLayer::fill(size, size, Tile::empty_ground()).into();
+                    let current_layer = 0;
+                    let ui_state = MapEditorEditingUIState::new(
+                        filename,
+                        map,
+                        current_layer,
+                        EditingMode::Normal,
+                    );
+                    commands.insert_resource(ui_state);
+                    commands.insert_resource(NextState(Some(GameState::EditingMap)));
+                }
+                Err(e) => {
+                    toast_message_event_writer.send(ToastMessageEvent(e.to_string()));
+                }
+            },
+            None => {}
+        },
+        MapEditorMenuType::LoadMapMenu(maps) => {
+            unimplemented!()
         }
     }
 }
@@ -168,13 +219,13 @@ fn render_map_editor_menu_system(
 // Helper Structs
 #[derive(Debug, Clone, Hash)]
 pub enum InputError {
-    InvalidFilename(String),
+    InvalidFileStem(String),
 }
 
 impl InputError {
     pub fn to_string(&self) -> String {
         match self {
-            Self::InvalidFilename(s) => {
+            Self::InvalidFileStem(s) => {
                 format!("Invalid Filename: {}", s)
             }
         }
@@ -184,12 +235,42 @@ impl InputError {
 // End Helper Structs
 
 // Helper Functions
-fn sanitize_map_name(s: &str) -> Result<String, InputError> {
-    if is_sanitized(s) {
-        return Ok(s.to_string());
-    } else {
-        Err(InputError::InvalidFilename(s.to_string()))
-    }
-}
+fn sanitize_map_name<S: AsRef<OsStr> + Into<String>>(name: S) -> Result<S, InputError> {
+    let name_as_str = name.as_ref();
 
+    // Empty name or too long for most file systems
+    if name_as_str.is_empty() || name_as_str.len() > 255 {
+        return Err(InputError::InvalidFileStem(name.into()));
+    }
+
+    // Contains characters not allowed in Unix and Windows filenames
+    if name_as_str
+        .to_string_lossy()
+        .contains(&['/', '\\', '<', '>', ':', '"', '|', '?', '*', '\0'][..])
+    {
+        return Err(InputError::InvalidFileStem(name.into()));
+    }
+
+    // Reserved Windows filenames
+    let lower_name = name_as_str.to_string_lossy().to_lowercase();
+    let reserved_names = [
+        "con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8",
+        "com9", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
+    ];
+    if reserved_names.contains(&lower_name.as_str()) {
+        return Err(InputError::InvalidFileStem(name.into()));
+    }
+
+    // Leading or trailing spaces and periods not allowed on Windows
+    if lower_name.starts_with(' ')
+        || lower_name.ends_with(' ')
+        || lower_name.starts_with('.')
+        || lower_name.ends_with('.')
+    {
+        return Err(InputError::InvalidFileStem(name.into()));
+    }
+
+    // If all checks pass, the filename is valid
+    Ok(name)
+}
 // End Helper Functions
