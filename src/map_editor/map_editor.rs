@@ -7,6 +7,7 @@ use bevy_egui::EguiContexts;
 
 use crate::constants::*;
 use crate::game::events::MenuInputEvent;
+use crate::game::exploring::DespawnNonCameraEntitiesEvent;
 use crate::game::map::{Map, MapLayer, Tile};
 use crate::game::resources::GameState;
 use crate::menu::{MenuType, MenuUIState};
@@ -160,6 +161,7 @@ fn render_map_editor_menu_system(
     mut switch_menu_event_writer: EventWriter<MapEditorSwitchMenuEvent>,
     mut toast_message_event_writer: EventWriter<ToastMessageEvent>,
     mut ui_state: ResMut<MapEditorMenuUIState>,
+    mut despawn_event_writer: EventWriter<DespawnNonCameraEntitiesEvent>,
 ) {
     let response = ui_state.render(&mut contexts, &mut input_event_reader);
     match &mut ui_state.menu_type {
@@ -199,6 +201,7 @@ fn render_map_editor_menu_system(
                         current_layer,
                         EditingMode::Normal,
                     );
+                    despawn_event_writer.send(DespawnNonCameraEntitiesEvent);
                     commands.insert_resource(ui_state);
                     commands.insert_resource(NextState(Some(GameState::EditingMap)));
                 }

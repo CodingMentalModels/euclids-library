@@ -24,7 +24,8 @@ impl Plugin for ExploringPlugin {
     fn build(&self, app: &mut App) {
         let generalized_exploring =
             || in_state(GameState::Exploring).or_else(in_state(GameState::NonPlayerTurns));
-        app.add_systems(OnEnter(GameState::LoadingMap), load_map_system)
+        app.add_event::<DespawnNonCameraEntitiesEvent>()
+            .add_systems(OnEnter(GameState::LoadingMap), load_map_system)
             .add_systems(OnEnter(GameState::Exploring), spawn_map)
             .add_systems(Update, movement_system.run_if(generalized_exploring()))
             .add_systems(Update, update_positions.run_if(generalized_exploring()))
@@ -49,9 +50,19 @@ impl Plugin for ExploringPlugin {
             .add_systems(
                 Update,
                 process_non_player_turn.run_if(in_state(GameState::NonPlayerTurns)),
+            )
+            .add_systems(
+                Update,
+                despawn_non_camera_entities.run_if(on_event::<DespawnNonCameraEntitiesEvent>()),
             );
     }
 }
+
+//Events
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
+pub struct DespawnNonCameraEntitiesEvent;
+
+// End Events
 
 // Resources
 
@@ -366,6 +377,15 @@ fn process_non_player_turn(
         None => {
             commands.insert_resource(NextState(Some(GameState::Exploring)));
         }
+    }
+}
+
+fn despawn_non_camera_entities(
+    mut commands: Commands,
+    query: Query<(Entity, &Transform), Without<Camera>>,
+) {
+    for (entity, _) in query.iter() {
+        commands.entity(entity).despawn();
     }
 }
 
