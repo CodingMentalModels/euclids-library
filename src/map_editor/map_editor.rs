@@ -1,4 +1,5 @@
 use std::ffi::OsStr;
+use std::fs;
 use std::path::Path;
 use std::result::Result;
 
@@ -30,6 +31,7 @@ pub struct MapEditorPlugin;
 impl Plugin for MapEditorPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<MapEditorSwitchMenuEvent>()
+            .add_event::<AddTransactionEvent>()
             .add_systems(
                 OnEnter(GameState::EditingMapMenu),
                 initialize_map_editor_menu_system,
@@ -45,7 +47,13 @@ impl Plugin for MapEditorPlugin {
                         .and_then(on_event::<MapEditorSwitchMenuEvent>()),
                 ),
             )
-            .add_systems(OnEnter(GameState::EditingMap), spawn_map_system);
+            .add_systems(OnEnter(GameState::EditingMap), spawn_map_system)
+            .add_systems(
+                Update,
+                add_transaction_and_save_system.run_if(
+                    in_state(GameState::EditingMap).and_then(on_event::<AddTransactionEvent>()),
+                ),
+            );
     }
 }
 
@@ -97,6 +105,7 @@ impl MapEditorMenuUIState {
         self.menu_state.render(contexts, input_reader)
     }
 }
+
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub enum MapEditorMenuType {
     #[default]
@@ -106,22 +115,43 @@ pub enum MapEditorMenuType {
     LoadMapMenu(Vec<String>),
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Resource)]
+#[derive(Debug, Resource)]
 pub struct MapEditorEditingUIState {
     filename: String,
-    map: Map,
+    store: TransactionStore,
     current_layer: usize,
     mode: EditingMode,
 }
 
 impl MapEditorEditingUIState {
-    pub fn new(filename: String, map: Map, current_layer: usize, mode: EditingMode) -> Self {
-        Self {
+    pub fn new(
+        filename: String,
+        store: TransactionStore,
+        current_layer: usize,
+        mode: EditingMode,
+    ) -> Result<Self, TransactionStoreError> {
+        let _current_map_layer = store.compile_layer(current_layer)?;
+        Ok(Self {
             filename,
-            map,
+            store,
             current_layer,
             mode,
-        }
+        })
+    }
+
+    pub fn get_filename(&self) -> String {
+        self.filename.clone()
+    }
+
+    pub fn get_map(&self) -> Result<Map, TransactionStoreError> {
+        self.store.compile()
+    }
+
+    pub fn get_current_map_layer(&self) -> Result<MapLayer, TransactionStoreError> {
+        let map = self.get_map()?;
+        map.get_layer(self.current_layer)
+            .map_err(|_| TransactionStoreError::CurrentLayerDoesntExist)
+            .cloned()
     }
 }
 
@@ -138,6 +168,9 @@ pub enum EditingMode {
 // Events
 #[derive(Debug, Hash, PartialEq, Eq, Event)]
 pub struct MapEditorSwitchMenuEvent(MapEditorMenuType);
+
+#[derive(Debug, PartialEq, Eq, Event)]
+pub struct AddTransactionEvent(Option<Transaction>);
 
 // End Events
 
@@ -161,6 +194,7 @@ fn render_map_editor_menu_system(
     mut input_event_reader: EventReader<MenuInputEvent>,
     mut switch_menu_event_writer: EventWriter<MapEditorSwitchMenuEvent>,
     mut toast_message_event_writer: EventWriter<ToastMessageEvent>,
+    mut add_transaction_event_writer: EventWriter<AddTransactionEvent>,
     mut ui_state: ResMut<MapEditorMenuUIState>,
     mut despawn_event_writer: EventWriter<DespawnBoundEntitiesEvent>,
 ) {
@@ -196,15 +230,22 @@ fn render_map_editor_menu_system(
                     let filename = format!("{}.json", map_name);
                     let map = MapLayer::fill(size, size, Tile::empty_ground()).into();
                     let current_layer = 0;
-                    let ui_state = MapEditorEditingUIState::new(
+                    match MapEditorEditingUIState::new(
                         filename,
-                        map,
+                        TransactionStore::from_snapshot(map),
                         current_layer,
                         EditingMode::Normal,
-                    );
-                    despawn_event_writer.send(DespawnBoundEntitiesEvent(GameState::Exploring));
-                    commands.insert_resource(ui_state);
-                    commands.insert_resource(NextState(Some(GameState::EditingMap)));
+                    ) {
+                        Ok(ui_state) => {
+                            despawn_event_writer
+                                .send(DespawnBoundEntitiesEvent(GameState::Exploring));
+                            add_transaction_event_writer.send(AddTransactionEvent(None));
+                            commands.insert_resource(ui_state);
+                            commands.insert_resource(NextState(Some(GameState::EditingMap)));
+                        }
+                        Err(e) => toast_message_event_writer
+                            .send(ToastMessageEvent(format!("TransactionStoreError: {:?}", e))),
+                    };
                 }
                 Err(e) => {
                     toast_message_event_writer.send(ToastMessageEvent(e.to_string()));
@@ -222,12 +263,16 @@ fn spawn_map_system(
     mut commands: Commands,
     ui_state: Res<MapEditorEditingUIState>,
     font: Res<LoadedFont>,
+    mut toast_message_event_writer: EventWriter<ToastMessageEvent>,
 ) {
-    let map_layer = ui_state
-        .map
-        .get_layer(ui_state.current_layer)
-        .expect("Current layer must exist.");
-
+    let map_layer = match ui_state.get_current_map_layer() {
+        Err(e) => {
+            toast_message_event_writer
+                .send(ToastMessageEvent(format!("Transaction error: {:?}", e)));
+            return;
+        }
+        Ok(map_layer) => map_layer,
+    };
     let tile_grid = TileGrid::from_map_layer(map_layer.clone());
     tile_grid.render(&mut commands, font.0.clone(), GameState::EditingMap);
 
@@ -244,6 +289,45 @@ fn spawn_map_system(
                 );
             };
         });
+}
+
+fn add_transaction_and_save_system(
+    mut ui_state: ResMut<MapEditorEditingUIState>,
+    mut event_reader: EventReader<AddTransactionEvent>,
+    mut toast_message_event_writer: EventWriter<ToastMessageEvent>,
+) {
+    for event in event_reader.iter() {
+        let AddTransactionEvent(maybe_transaction) = event;
+
+        if maybe_transaction.is_some() {
+            ui_state.store.add(maybe_transaction.clone().unwrap());
+        }
+
+        match &ui_state.store.compile() {
+            Err(e) => {
+                toast_message_event_writer.send(ToastMessageEvent(format!(
+                    "Error compiling map from transactions: {:?}",
+                    e
+                )));
+            }
+            Ok(map) => match serde_json::to_string(map) {
+                Err(e) => {
+                    toast_message_event_writer
+                        .send(ToastMessageEvent(format!("Error serializing map: {}", e)));
+                }
+                Ok(map_string) => {
+                    let result = fs::write(
+                        Path::new(MAP_DIRECTORY).join(ui_state.get_filename()),
+                        map_string,
+                    );
+                    if let Err(e) = result {
+                        toast_message_event_writer
+                            .send(ToastMessageEvent(format!("Error saving map: {}", e)));
+                    }
+                }
+            },
+        }
+    }
 }
 
 // End Systems
@@ -289,6 +373,13 @@ impl TransactionStore {
             self.transactions.remove(self.transactions.len() - 1);
             Ok(())
         }
+    }
+
+    pub fn compile_layer(&self, layer_idx: usize) -> Result<MapLayer, TransactionStoreError> {
+        self.compile()?
+            .get_layer(layer_idx)
+            .map_err(|e| TransactionStoreError::CurrentLayerDoesntExist)
+            .cloned()
     }
 
     pub fn compile(&self) -> Result<Map, TransactionStoreError> {
@@ -351,6 +442,7 @@ impl Transaction {
 pub enum TransactionStoreError {
     NoSnapshotTransaction,
     NoTransactionsToUndo,
+    CurrentLayerDoesntExist,
 }
 
 // End Helper Structs
