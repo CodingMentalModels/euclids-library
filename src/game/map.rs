@@ -15,7 +15,7 @@ use super::{
 };
 use crate::constants::*;
 
-#[derive(Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct Map(Vec<MapLayer>);
 
 impl Map {
@@ -38,6 +38,10 @@ impl Map {
     pub fn is_traversable(&self, location: MapLocation) -> Result<bool, MapError> {
         self.get_layer(location.map_layer)
             .and_then(|layer| layer.is_traversable(location.get_tile_location()))
+    }
+
+    pub fn update(&mut self, tile: Tile, location: MapLocation) -> Result<(), MapError> {
+        self.0[location.get_map_layer()].update_at_location(tile, location.get_tile_location())
     }
 }
 
@@ -110,7 +114,15 @@ impl MapLayer {
             .collect()
     }
 
-    pub fn update(&mut self, i: usize, j: usize, tile: Tile) -> Result<(), MapError> {
+    pub fn update_at_location(
+        &mut self,
+        tile: Tile,
+        location: TileLocation,
+    ) -> Result<(), MapError> {
+        self.update(tile, location.i as usize, location.j as usize)
+    }
+
+    pub fn update(&mut self, tile: Tile, i: usize, j: usize) -> Result<(), MapError> {
         if i >= self.width() || j >= self.height() {
             return Err(MapError::OutOfBounds);
         }
@@ -242,6 +254,12 @@ pub enum ObjectTile {
 pub struct MapLocation {
     map_layer: usize,
     tile_location: TileLocation,
+}
+
+impl From<TileLocation> for MapLocation {
+    fn from(value: TileLocation) -> Self {
+        Self::new(0, value)
+    }
 }
 
 impl MapLocation {

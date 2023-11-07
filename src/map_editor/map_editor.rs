@@ -8,6 +8,7 @@ use bevy_egui::EguiContexts;
 use crate::constants::*;
 use crate::game::events::{DespawnBoundEntitiesEvent, MenuInputEvent};
 use crate::game::map::{Map, MapLayer, Tile, TileGrid};
+use crate::game::map::{MapLocation, TileLocation};
 use crate::game::resources::{GameState, LoadedFont};
 use crate::menu::{MenuType, MenuUIState};
 use crate::ui::ToastMessageEvent;
@@ -263,6 +264,95 @@ impl InputError {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct TransactionStore {
+    transactions: Vec<Transaction>,
+}
+
+impl TransactionStore {
+    pub fn new(transactions: Vec<Transaction>) -> Self {
+        Self { transactions }
+    }
+
+    pub fn from_snapshot(map: Map) -> Self {
+        Self::new(vec![Transaction::Snapshot(map)])
+    }
+
+    pub fn add(&mut self, transaction: Transaction) {
+        self.transactions.push(transaction);
+    }
+
+    pub fn undo(&mut self) -> Result<(), TransactionStoreError> {
+        if self.transactions.len() == 0 {
+            Err(TransactionStoreError::NoTransactionsToUndo)
+        } else {
+            self.transactions.remove(self.transactions.len() - 1);
+            Ok(())
+        }
+    }
+
+    pub fn compile(&self) -> Result<Map, TransactionStoreError> {
+        let (mut result, from_last_snapshot) = self.get_from_last_snapshot()?;
+        for transaction in from_last_snapshot.iter() {
+            Self::apply_transaction(&mut result, transaction);
+        }
+        Ok(result)
+    }
+
+    fn get_from_last_snapshot(&self) -> Result<(Map, Vec<Transaction>), TransactionStoreError> {
+        let (snapshot_idx, snapshot) = self
+            .transactions
+            .iter()
+            .enumerate()
+            .rev()
+            .find(|(i, t)| t.is_snapshot())
+            .ok_or(TransactionStoreError::NoSnapshotTransaction)?;
+        if let Transaction::Snapshot(map) = snapshot {
+            let remaining_transactions = self.transactions[snapshot_idx..].to_vec();
+            Ok((map.clone(), remaining_transactions))
+        } else {
+            unreachable!();
+        }
+    }
+
+    fn apply_transaction(
+        map: &mut Map,
+        transaction: &Transaction,
+    ) -> Result<(), TransactionStoreError> {
+        match transaction {
+            Transaction::Snapshot(new_map) => {
+                *map = new_map.clone();
+            }
+            Transaction::Update(tile, location) => {
+                map.update(tile.clone(), location.clone());
+            }
+        };
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Transaction {
+    Snapshot(Map),
+    Update(Tile, MapLocation),
+}
+
+impl Transaction {
+    pub fn is_snapshot(&self) -> bool {
+        if let Self::Snapshot(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum TransactionStoreError {
+    NoSnapshotTransaction,
+    NoTransactionsToUndo,
+}
+
 // End Helper Structs
 
 // Helper Functions
@@ -305,3 +395,34 @@ fn sanitize_map_name<S: AsRef<OsStr> + Into<String>>(name: S) -> Result<S, Input
     Ok(name)
 }
 // End Helper Functions
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn test_transactions_compile() {
+        let map: Map = MapLayer::fill(10, 20, Tile::empty_ground()).into();
+        let mut store = TransactionStore::from_snapshot(map);
+        store.add(Transaction::Update(
+            Tile::wall(),
+            TileLocation::new(3, 5).into(),
+        ));
+        store.add(Transaction::Update(
+            Tile::wall(),
+            TileLocation::new(4, 5).into(),
+        ));
+        store.add(Transaction::Update(
+            Tile::wall(),
+            TileLocation::new(5, 5).into(),
+        ));
+        store.undo();
+
+        let mut expected: Map = MapLayer::fill(10, 20, Tile::empty_ground()).into();
+        expected.update(Tile::wall(), TileLocation::new(3, 5).into());
+        expected.update(Tile::wall(), TileLocation::new(4, 5).into());
+
+        assert_eq!(store.compile(), Ok(expected));
+    }
+}

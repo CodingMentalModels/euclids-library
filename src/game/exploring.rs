@@ -91,7 +91,7 @@ fn load_map_system(mut commands: Commands) {
     );
     map_layer.update_edges(&Tile::wall());
     map_layer
-        .update(5, 5, Tile::empty(SurfaceTile::Fireplace))
+        .update(Tile::empty(SurfaceTile::Fireplace), 5, 5)
         .expect("5, 5 exists because we're setting it up that way.");
 
     commands.insert_resource(LoadedMap(map_layer.into()));
