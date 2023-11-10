@@ -20,15 +20,14 @@ impl Plugin for UIPlugin {
     fn build(&self, app: &mut App) {
         let generalized_exploring =
             || in_state(GameState::Exploring).or_else(in_state(GameState::NonPlayerTurns));
+        let camera_zoom_states =
+            || generalized_exploring().or_else(in_state(GameState::EditingMap));
         app.add_event::<UpdateUIEvent>()
             .add_event::<ToastMessageEvent>()
             .add_plugins(EguiPlugin)
             .add_systems(OnEnter(GameState::LoadingUI), configure_visuals)
             .add_systems(OnEnter(GameState::LoadingUI), ui_load_system)
-            .add_systems(
-                Update,
-                update_camera_zoom.run_if(in_state(GameState::Exploring)),
-            )
+            .add_systems(Update, update_camera_zoom.run_if(camera_zoom_states()))
             .add_systems(Update, render_exploring_ui.run_if(generalized_exploring()))
             .add_systems(
                 Update,

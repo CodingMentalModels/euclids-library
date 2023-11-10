@@ -1,4 +1,5 @@
 mod assets;
+mod camera;
 mod constants;
 mod game;
 mod input;
@@ -19,6 +20,7 @@ use game::world::WorldPlugin;
 use input::InputPlugin;
 use menu::MenuPlugin;
 
+use crate::camera::CameraMovementPlugin;
 use crate::game::resources::*;
 use crate::input::MouseoverRaycastSet;
 use crate::map_editor::map_editor::MapEditorPlugin;
@@ -31,6 +33,7 @@ fn main() {
             DefaultRaycastingPlugin::<MouseoverRaycastSet>::default(),
         ))
         .add_plugins(AssetsPlugin)
+        .add_plugins(CameraMovementPlugin)
         .add_plugins(EventsPlugin)
         .add_plugins(UIPlugin)
         .add_plugins(InputPlugin)

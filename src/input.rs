@@ -215,6 +215,15 @@ pub fn input_system(
             );
             handle_menu_input(&keyboard_input, menu_input_event_writer);
         }
+        GameState::EditingMap => {
+            handle_camera_movement(
+                &keyboard_input,
+                &mut timer,
+                time.delta(),
+                camera_movement_event_writer,
+            );
+            handle_camera_zoom(&keyboard_input, &mut timer, time.delta(), zoom_event_writer);
+        }
         _ => {}
     }
 }

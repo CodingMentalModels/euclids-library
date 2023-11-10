@@ -7,7 +7,7 @@ use super::enemy::{AIComponent, EnemyComponent};
 use super::events::{BoundStateComponent, DamageEvent, DespawnBoundEntitiesEvent};
 use super::resources::RngResource;
 use super::{
-    events::{CameraMovementEvent, TryMoveEvent},
+    events::TryMoveEvent,
     map::{MapLayer, SurfaceTile, Tile},
     npc::NPCComponent,
     particle::{ParticleComponent, ParticleEmitterComponent, ParticleTiming},
@@ -28,7 +28,6 @@ impl Plugin for ExploringPlugin {
             .add_systems(OnEnter(GameState::Exploring), spawn_map_system)
             .add_systems(Update, movement_system.run_if(generalized_exploring()))
             .add_systems(Update, update_positions.run_if(generalized_exploring()))
-            .add_systems(Update, move_camera_system.run_if(generalized_exploring()))
             .add_systems(Update, handle_damage_system.run_if(generalized_exploring()))
             .add_systems(
                 Update,
@@ -142,16 +141,6 @@ fn update_positions(mut query: Query<(&LocationComponent, &mut Transform)>) {
         let screen_coordinates =
             TileGrid::tile_to_world_coordinates(location.0.get_tile_location());
         *transform = Transform::from_translation(screen_coordinates.extend(0.));
-    }
-}
-
-fn move_camera_system(
-    mut camera_movement_event_reader: EventReader<CameraMovementEvent>,
-    mut query: Query<&mut Transform, With<Camera2d>>,
-) {
-    let mut transform = query.single_mut();
-    for event in camera_movement_event_reader.iter() {
-        transform.translation += event.0.as_vector().extend(0.) * CAMERA_MOVE_SPEED;
     }
 }
 
