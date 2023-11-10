@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
@@ -6,10 +7,11 @@ use std::result::Result;
 use bevy::prelude::*;
 use bevy_egui::EguiContexts;
 
+use crate::assets::read_file_names_and_files_from_directory;
 use crate::constants::*;
 use crate::game::events::{DespawnBoundEntitiesEvent, MenuInputEvent};
+use crate::game::map::MapLocation;
 use crate::game::map::{Map, MapLayer, Tile, TileGrid};
-use crate::game::map::{MapLocation, TileLocation};
 use crate::game::resources::{GameState, LoadedFont};
 use crate::menu::{MenuType, MenuUIState};
 use crate::ui::ToastMessageEvent;
@@ -90,9 +92,10 @@ impl MapEditorMenuUIState {
             MapEditorMenuType::NewMapSizeMenu(_buffer) => {
                 MenuUIState::new(MenuType::TextInput("Map Size:".to_string()))
             }
-            MapEditorMenuType::LoadMapMenu(_maps) => {
-                MenuUIState::new(MenuType::Info(vec!["Load Map Menu".to_string()]))
-            }
+            MapEditorMenuType::LoadMapMenu(maps) => MenuUIState::new(MenuType::SearchAndSelect(
+                "Load Map".to_string(),
+                maps.to_vec(),
+            )),
         };
         Self::new(menu_type, menu_state)
     }
@@ -163,6 +166,8 @@ pub enum EditingMode {
     Block,
 }
 
+#[derive(Debug, Resource)]
+pub struct LoadedMaps(HashMap<String, Map>);
 // End Resources
 
 // Events
@@ -177,6 +182,23 @@ pub struct AddTransactionEvent(Option<Transaction>);
 // Systems
 fn initialize_map_editor_menu_system(mut commands: Commands) {
     commands.insert_resource(MapEditorMenuUIState::default());
+
+    let maps = read_file_names_and_files_from_directory(Path::new(MAP_DIRECTORY))
+        .into_iter()
+        .map(|(name, s)| {
+            serde_json::from_str(&s).map(|result| {
+                (
+                    name.split('.')
+                        .next()
+                        .expect("All files have a extension")
+                        .to_string(),
+                    result,
+                )
+            })
+        })
+        .collect::<Result<HashMap<String, Map>, _>>()
+        .expect("Error parsing maps.");
+    commands.insert_resource(LoadedMaps(maps));
 }
 
 fn switch_menu_system(
@@ -191,6 +213,7 @@ fn switch_menu_system(
 fn render_map_editor_menu_system(
     mut commands: Commands,
     mut contexts: EguiContexts,
+    loaded_maps: Res<LoadedMaps>,
     mut input_event_reader: EventReader<MenuInputEvent>,
     mut switch_menu_event_writer: EventWriter<MapEditorSwitchMenuEvent>,
     mut toast_message_event_writer: EventWriter<ToastMessageEvent>,
@@ -201,8 +224,7 @@ fn render_map_editor_menu_system(
     let response = ui_state.render(&mut contexts, &mut input_event_reader);
     match &mut ui_state.menu_type {
         MapEditorMenuType::NewOrLoadMenu => {
-            // TODO Load this from folder
-            let maps = vec![];
+            let maps = loaded_maps.0.keys().cloned().collect();
             match response.as_deref() {
                 Some("New Map") => switch_menu_event_writer
                     .send(MapEditorSwitchMenuEvent(MapEditorMenuType::NewMapNameMenu)),
@@ -253,9 +275,32 @@ fn render_map_editor_menu_system(
             },
             None => {}
         },
-        MapEditorMenuType::LoadMapMenu(maps) => {
-            unimplemented!()
-        }
+        MapEditorMenuType::LoadMapMenu(_maps) => match response {
+            Some(map_name) => {
+                let filename = format!("{}.json", map_name);
+                let map = loaded_maps
+                    .0
+                    .get(&map_name)
+                    .expect("The only options are what we loaded.");
+                let current_layer = 0;
+                match MapEditorEditingUIState::new(
+                    filename,
+                    TransactionStore::from_snapshot(map.clone()),
+                    current_layer,
+                    EditingMode::Normal,
+                ) {
+                    Ok(ui_state) => {
+                        despawn_event_writer.send(DespawnBoundEntitiesEvent(GameState::Exploring));
+                        add_transaction_event_writer.send(AddTransactionEvent(None));
+                        commands.insert_resource(ui_state);
+                        commands.insert_resource(NextState(Some(GameState::EditingMap)));
+                    }
+                    Err(e) => toast_message_event_writer
+                        .send(ToastMessageEvent(format!("TransactionStoreError: {:?}", e))),
+                };
+            }
+            None => {}
+        },
     }
 }
 
@@ -459,7 +504,7 @@ fn sanitize_map_name<S: AsRef<OsStr> + Into<String>>(name: S) -> Result<S, Input
     // Contains characters not allowed in Unix and Windows filenames
     if name_as_str
         .to_string_lossy()
-        .contains(&['/', '\\', '<', '>', ':', '"', '|', '?', '*', '\0'][..])
+        .contains(&['/', '\\', '<', '>', ':', '"', '|', '?', '*', '\0', '.'][..])
     {
         return Err(InputError::InvalidFileStem(name.into()));
     }
@@ -490,6 +535,8 @@ fn sanitize_map_name<S: AsRef<OsStr> + Into<String>>(name: S) -> Result<S, Input
 
 #[cfg(test)]
 mod tests {
+
+    use crate::game::map::TileLocation;
 
     use super::*;
 

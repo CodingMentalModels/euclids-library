@@ -71,8 +71,14 @@ fn load_assets_system(mut commands: Commands) {
 // End Systems
 
 // Helper Functions
+pub fn read_files_from_directory(directory: &Path) -> Vec<String> {
+    read_file_names_and_files_from_directory(directory)
+        .into_iter()
+        .map(|(name, contents)| contents)
+        .collect()
+}
 
-fn read_files_from_directory(directory: &Path) -> Vec<String> {
+pub fn read_file_names_and_files_from_directory(directory: &Path) -> Vec<(String, String)> {
     let paths = fs::read_dir(directory);
     let mut to_return = Vec::new();
     match paths {
@@ -82,10 +88,19 @@ fn read_files_from_directory(directory: &Path) -> Vec<String> {
                     Ok(dir_entry) => {
                         let subpath = dir_entry.path();
                         if subpath.is_file() {
+                            let cloned_subpath = subpath.clone();
+                            let filename = cloned_subpath.file_name();
                             let contents_result = fs::read_to_string(subpath);
                             match contents_result {
                                 Ok(contents) => {
-                                    to_return.push(contents);
+                                    to_return.push((
+                                        filename
+                                            .expect("We know we're a file")
+                                            .to_str()
+                                            .expect("The filename should be a legitimate string.")
+                                            .to_string(),
+                                        contents,
+                                    ));
                                 }
                                 Err(e) => {
                                     panic!("Error reading file: {}", e);

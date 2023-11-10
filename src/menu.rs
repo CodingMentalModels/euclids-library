@@ -10,7 +10,7 @@ use crate::game::events::MenuInputEvent;
 use crate::game::{
     character::BodyComponent, events::OpenMenuEvent, player::PlayerComponent, resources::GameState,
 };
-use crate::ui::get_default_text;
+use crate::ui::{get_default_text, get_underlined_text};
 
 pub struct MenuPlugin;
 
@@ -76,8 +76,38 @@ impl MenuUIState {
                 }
                 return None;
             }
-            MenuType::SearchAndSelect => {
-                unimplemented!()
+            MenuType::SearchAndSelect(header, options) => {
+                let to_show_fn = |ui: &mut Ui| {
+                    ui.label(get_underlined_text(header.to_string()));
+                    ui.label(get_default_text("Search: ".to_string()));
+                    let response = ui.add(egui::TextEdit::singleline(&mut buffer));
+                    response.request_focus();
+                    let current_search = buffer.clone();
+                    let filtered_results = if current_search.len() == 0 {
+                        options.clone()
+                    } else {
+                        options
+                            .iter()
+                            .filter(|s| s.starts_with(&current_search))
+                            .cloned()
+                            .collect()
+                    };
+                    for option in filtered_results.iter() {
+                        ui.label(get_default_text(option.clone()));
+                    }
+                    if ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                        if filtered_results.len() > 0 {
+                            return Some(filtered_results[0].clone());
+                        } else {
+                            return None;
+                        }
+                    } else {
+                        return None;
+                    }
+                };
+                let to_return = self.display(contexts, to_show_fn);
+                self.buffer = buffer;
+                return to_return;
             }
             MenuType::TextInput(prompt) => {
                 let to_show_fn = |ui: &mut Ui| {
@@ -141,7 +171,7 @@ impl MenuUIState {
 pub enum MenuType {
     Info(Vec<String>),
     SelectFinite(Vec<String>),
-    SearchAndSelect,
+    SearchAndSelect(String, Vec<String>),
     TextInput(String),
 }
 
