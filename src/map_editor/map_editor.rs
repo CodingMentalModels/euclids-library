@@ -7,7 +7,7 @@ use std::result::Result;
 use bevy::prelude::*;
 use bevy_egui::EguiContexts;
 
-use crate::assets::read_file_names_and_files_from_directory;
+use crate::assets::FileSystem;
 use crate::constants::*;
 use crate::game::events::{DespawnBoundEntitiesEvent, MenuInputEvent};
 use crate::game::map::MapLocation;
@@ -183,21 +183,21 @@ pub struct AddTransactionEvent(Option<Transaction>);
 fn initialize_map_editor_menu_system(mut commands: Commands) {
     commands.insert_resource(MapEditorMenuUIState::default());
 
-    let maps = read_file_names_and_files_from_directory(Path::new(MAP_DIRECTORY))
+    let filesystem = FileSystem::<Map>::new_directory(MAP_DIRECTORY);
+    let maps = filesystem
+        .load_all()
+        .expect("Error parsing maps.")
         .into_iter()
-        .map(|(name, s)| {
-            serde_json::from_str(&s).map(|result| {
-                (
-                    name.split('.')
-                        .next()
-                        .expect("All files have a extension")
-                        .to_string(),
-                    result,
-                )
-            })
+        .map(|(name, map)| {
+            (
+                name.split('.')
+                    .next()
+                    .expect("All files have a extension")
+                    .to_string(),
+                map,
+            )
         })
-        .collect::<Result<HashMap<String, Map>, _>>()
-        .expect("Error parsing maps.");
+        .collect();
     commands.insert_resource(LoadedMaps(maps));
 }
 

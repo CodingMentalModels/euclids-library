@@ -1,8 +1,12 @@
 use bevy::prelude::*;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use std::path::PathBuf;
 use std::sync::RwLock;
 
 use crate::constants::*;
@@ -55,12 +59,13 @@ fn generate_example_specs_system() {
 }
 
 fn load_assets_system(mut commands: Commands) {
-    let npcs = read_files_from_directory(Path::new(NPC_DIRECTORY))
+    let file_loader: FileSystem<NPC> = FileSystem::new_directory(NPC_DIRECTORY);
+    let npcs = file_loader
+        .load_all()
+        .expect("We should be able to load NPCs.")
         .into_iter()
-        .filter(|s| s.len() > 0)
-        .map(|s| serde_json::from_str(&s))
-        .collect::<Result<Vec<NPC>, _>>()
-        .expect("Error parsing npcs.");
+        .map(|(_name, npc)| npc)
+        .collect::<Vec<NPC>>();
 
     commands.insert_resource(NPCSpecs::from_vec(npcs));
     let rng = StdRng::seed_from_u64(12345);
@@ -70,56 +75,94 @@ fn load_assets_system(mut commands: Commands) {
 
 // End Systems
 
-// Helper Functions
-pub fn read_files_from_directory(directory: &Path) -> Vec<String> {
-    read_file_names_and_files_from_directory(directory)
-        .into_iter()
-        .map(|(name, contents)| contents)
-        .collect()
+// Resources
+#[derive(Debug, Resource)]
+pub enum FileSystem<T: Clone + Serialize + DeserializeOwned> {
+    Stub(HashMap<String, T>),
+    Directory(Box<PathBuf>),
 }
 
-pub fn read_file_names_and_files_from_directory(directory: &Path) -> Vec<(String, String)> {
-    let paths = fs::read_dir(directory);
-    let mut to_return = Vec::new();
-    match paths {
-        Ok(read_dir) => {
-            for subpath_result in read_dir {
-                match subpath_result {
-                    Ok(dir_entry) => {
-                        let subpath = dir_entry.path();
-                        if subpath.is_file() {
-                            let cloned_subpath = subpath.clone();
-                            let filename = cloned_subpath.file_name();
-                            let contents_result = fs::read_to_string(subpath);
-                            match contents_result {
-                                Ok(contents) => {
-                                    to_return.push((
-                                        filename
-                                            .expect("We know we're a file")
-                                            .to_str()
-                                            .expect("The filename should be a legitimate string.")
-                                            .to_string(),
-                                        contents,
-                                    ));
-                                }
-                                Err(e) => {
-                                    panic!("Error reading file: {}", e);
-                                }
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        panic!("Error reading subpath: {}", e);
-                    }
-                }
-            }
-        }
-        Err(e) => {
-            panic!("Error reading directory: {}", e);
+impl<T: Clone + Serialize + DeserializeOwned> FileSystem<T> {
+    pub fn new_directory(directory_name: &str) -> Self {
+        Self::Directory(Box::new(PathBuf::from(directory_name)))
+    }
+    pub fn load(&self, filename: &str) -> Result<T, FileSystemError> {
+        self.load_all().and_then(|map| {
+            map.get(filename)
+                .cloned()
+                .ok_or(FileSystemError::NoSuchFile)
+        })
+    }
+
+    pub fn load_all(&self) -> Result<HashMap<String, T>, FileSystemError> {
+        match self {
+            Self::Stub(map) => Ok(map.clone()),
+            Self::Directory(dir) => Self::read_file_names_and_files_from_directory(dir),
         }
     }
 
-    return to_return;
+    fn read_file_names_and_files_from_directory(
+        directory: &Path,
+    ) -> Result<HashMap<String, T>, FileSystemError> {
+        let paths = fs::read_dir(directory);
+        let mut to_return = HashMap::new();
+        match paths {
+            Ok(read_dir) => {
+                for subpath_result in read_dir {
+                    match subpath_result {
+                        Ok(dir_entry) => {
+                            let subpath = dir_entry.path();
+                            if subpath.is_file() {
+                                let cloned_subpath = subpath.clone();
+                                let filename = cloned_subpath.file_name();
+                                let contents_result = fs::read_to_string(subpath);
+                                match contents_result {
+                                    Ok(contents) => {
+                                        if contents.len() > 0 {
+                                            to_return.insert(
+                                            filename
+                                                .expect("We know we're a file")
+                                                .to_str()
+                                                .expect(
+                                                    "The filename should be a legitimate string.",
+                                                )
+                                                .to_string(),
+                                            serde_json::from_str(&contents).unwrap(), // .map_err(|_| FileSystemError::CouldntDeserialize)?,
+                                        );
+                                        }
+                                    }
+                                    Err(_) => {
+                                        return Err(FileSystemError::CouldntReadFile);
+                                    }
+                                }
+                            }
+                        }
+                        Err(_) => {
+                            return Err(FileSystemError::CouldntReadSubpath);
+                        }
+                    }
+                }
+            }
+            Err(_) => {
+                return Err(FileSystemError::CouldntReadDirectory);
+            }
+        }
+
+        return Ok(to_return);
+    }
 }
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum FileSystemError {
+    NoSuchFile,
+    CouldntReadDirectory,
+    CouldntReadSubpath,
+    CouldntReadFile,
+    CouldntDeserialize,
+}
+
+// End Resources
+
+// Helper Functions
 
 // End Helper Functions
