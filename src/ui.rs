@@ -26,12 +26,6 @@ impl Plugin for UIPlugin {
             .add_systems(OnEnter(GameState::LoadingUI), ui_load_system)
             .add_systems(
                 Update,
-                render_interacting_ui
-                    .after(update_interacting_ui_state_system)
-                    .run_if(in_state(GameState::Interacting)),
-            )
-            .add_systems(
-                Update,
                 trigger_toast_message.run_if(on_event::<ToastMessageEvent>()),
             )
             .add_systems(Update, show_toast_message);
@@ -103,42 +97,6 @@ fn show_toast_message(
             }
         }
         None => {}
-    }
-}
-
-fn render_interacting_ui(mut contexts: EguiContexts, ui_state: ResMut<InteractingUIState>) {
-    let ctx = contexts.ctx_mut();
-    match &ui_state.interacting_state {
-        InteractingState::ChoosingDirection => {
-            egui::TopBottomPanel::top("top-panel").show(ctx, |ui| {
-                ui.label("Choose a direction to interact.");
-            });
-        }
-        InteractingState::Interacting(interaction) => match &interaction {
-            Interactable::Dialog(dialog) => {
-                let content = match dialog {
-                    Dialog::PlayerDialog(options) => {
-                        let content = options
-                            .iter()
-                            .enumerate()
-                            .map(|(i, option)| format!("{}) {}", i, option.0))
-                            .collect::<Vec<_>>();
-                        content.join("\n")
-                    }
-                    Dialog::NPCDialog(npc_dialog) => {
-                        format!(
-                            "{}: {}",
-                            npc_dialog.get_speaker(),
-                            npc_dialog.get_contents()
-                        )
-                    }
-                };
-
-                egui::TopBottomPanel::top("top-panel").show(ctx, |ui| {
-                    ui.label(content);
-                });
-            }
-        },
     }
 }
 
