@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use super::{
     enemy::{AICommand, Enemy},
+    events::Direction,
     map::{MapLocation, TileLocation},
     player::Player,
     resources::{GameState, NPCSpecs},
@@ -68,6 +69,7 @@ fn initialize_enemies_system(mut commands: Commands) {
     let enemies = vec![Enemy::new(vec![
         AICommand::Speak("Fear me!".to_string()),
         AICommand::Wait(30),
+        AICommand::Move(Direction::UpRight),
     ])];
 
     // TODO Don't spawn all the enemies in the same place

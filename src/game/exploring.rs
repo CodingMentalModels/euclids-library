@@ -5,7 +5,7 @@ use bevy_egui::EguiContexts;
 
 use super::character::{ActionClockComponent, BodyComponent, LocationComponent};
 use super::enemy::{AICommand, AIComponent, EnemyComponent};
-use super::events::{BoundStateComponent, DamageEvent, DespawnBoundEntitiesEvent};
+use super::events::{BoundStateComponent, DamageEvent, DespawnBoundEntitiesEvent, WaitEvent};
 use super::resources::RngResource;
 use super::world::TimeElapsed;
 use super::{
@@ -29,6 +29,7 @@ impl Plugin for ExploringPlugin {
         app.add_systems(OnEnter(GameState::LoadingMap), load_map_system)
             .add_systems(OnEnter(GameState::Exploring), spawn_map_system)
             .add_systems(Update, movement_system.run_if(generalized_exploring()))
+            .add_systems(Update, wait_system.run_if(generalized_exploring()))
             .add_systems(Update, update_positions.run_if(generalized_exploring()))
             .add_systems(Update, handle_damage_system.run_if(generalized_exploring()))
             .add_systems(
@@ -140,6 +141,18 @@ fn movement_system(
     }
 }
 
+fn wait_system(
+    mut commands: Commands,
+    mut wait_event_reader: EventReader<WaitEvent>,
+    mut query: Query<(Entity, &mut LocationComponent, Option<&PlayerComponent>)>,
+    mut time_elapsed: ResMut<TimeElapsed>,
+    mut log: ResMut<LogState>,
+    map: Res<LoadedMap>,
+) {
+    for wait_event in wait_event_reader.iter() {
+        end_turn(&mut commands, &mut time_elapsed, MOVEMENT_TICKS);
+    }
+}
 fn update_positions(mut query: Query<(&LocationComponent, &mut Transform)>) {
     for (location, mut transform) in query.iter_mut() {
         let screen_coordinates =

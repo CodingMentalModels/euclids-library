@@ -63,6 +63,9 @@ impl CameraMovementEvent {
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
 pub struct TryMoveEvent(pub Entity, pub Direction);
 
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
+pub struct WaitEvent(pub Entity);
+
 impl TryMoveEvent {
     pub fn as_vector(&self) -> Vec2 {
         self.1.as_vector()

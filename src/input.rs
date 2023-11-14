@@ -9,7 +9,7 @@ use super::constants::*;
 use super::menu::MenuType;
 use crate::game::events::{
     CameraMovementEvent, CameraZoomEvent, ChooseDirectionEvent, DespawnBoundEntitiesEvent,
-    Direction, OpenMenuEvent, ProgressPromptEvent, StateChangeEvent, TryMoveEvent,
+    Direction, OpenMenuEvent, ProgressPromptEvent, StateChangeEvent, TryMoveEvent, WaitEvent,
 };
 use crate::game::events::{DamageEvent, MenuInputEvent};
 use crate::game::player::PlayerComponent;
@@ -26,6 +26,7 @@ impl Plugin for InputPlugin {
             .add_event::<CameraMovementEvent>()
             .add_event::<CameraZoomEvent>()
             .add_event::<TryMoveEvent>()
+            .add_event::<WaitEvent>()
             .add_event::<DamageEvent>()
             .add_event::<StateChangeEvent>()
             .add_event::<ChooseDirectionEvent>()
@@ -163,6 +164,7 @@ pub fn input_system(
     open_menu_event_writer: EventWriter<OpenMenuEvent>,
     menu_input_event_writer: EventWriter<MenuInputEvent>,
     movement_event_writer: EventWriter<TryMoveEvent>,
+    wait_event_writer: EventWriter<WaitEvent>,
     choose_direction_event_writer: EventWriter<ChooseDirectionEvent>,
     progress_prompt_event_writer: EventWriter<ProgressPromptEvent>,
     player_entity_query: Query<Entity, With<PlayerComponent>>,
@@ -193,6 +195,7 @@ pub fn input_system(
                 &mut timer,
                 time.delta(),
                 movement_event_writer,
+                wait_event_writer,
                 player_entity_query,
             );
             handle_interact(&keyboard_input, state_change_event_writer);
@@ -256,6 +259,7 @@ fn handle_movement(
     timer: &mut KeyHoldTimer,
     delta: Duration,
     mut movement_event_writer: EventWriter<TryMoveEvent>,
+    mut wait_event_writer: EventWriter<WaitEvent>,
     player_query: Query<Entity, With<PlayerComponent>>,
 ) {
     let player_entity = player_query
@@ -269,6 +273,11 @@ fn handle_movement(
         }
         _ => {
             // Do nothing
+        }
+    }
+    if keyboard_input.any_pressed([KeyCode::Period, KeyCode::NumpadDecimal]) {
+        if timer.tick_and_should_trigger(delta, keyboard_input) {
+            wait_event_writer.send(WaitEvent(player_entity));
         }
     }
 }
