@@ -198,6 +198,7 @@ fn initialize_map_editor_menu_system(mut commands: Commands) {
             )
         })
         .collect();
+    commands.insert_resource(filesystem);
     commands.insert_resource(LoadedMaps(maps));
 }
 
@@ -340,6 +341,7 @@ fn add_transaction_and_save_system(
     mut ui_state: ResMut<MapEditorEditingUIState>,
     mut event_reader: EventReader<AddTransactionEvent>,
     mut toast_message_event_writer: EventWriter<ToastMessageEvent>,
+    mut filesystem: ResMut<FileSystem<Map>>,
 ) {
     for event in event_reader.iter() {
         let AddTransactionEvent(maybe_transaction) = event;
@@ -355,20 +357,13 @@ fn add_transaction_and_save_system(
                     e
                 )));
             }
-            Ok(map) => match serde_json::to_string(map) {
+            Ok(map) => match filesystem.save(&ui_state.get_filename(), map.clone()) {
                 Err(e) => {
                     toast_message_event_writer
-                        .send(ToastMessageEvent(format!("Error serializing map: {}", e)));
+                        .send(ToastMessageEvent(format!("Error saving map: {:?}", e)));
                 }
-                Ok(map_string) => {
-                    let result = fs::write(
-                        Path::new(MAP_DIRECTORY).join(ui_state.get_filename()),
-                        map_string,
-                    );
-                    if let Err(e) = result {
-                        toast_message_event_writer
-                            .send(ToastMessageEvent(format!("Error saving map: {}", e)));
-                    }
+                Ok(()) => {
+                    // Do nothing
                 }
             },
         }

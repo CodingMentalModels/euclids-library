@@ -3,6 +3,7 @@ use rand::rngs::StdRng;
 use rand::SeedableRng;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde_json;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -101,6 +102,19 @@ impl<T: Clone + Serialize + DeserializeOwned> FileSystem<T> {
         }
     }
 
+    pub fn save(&mut self, filename: &str, o: T) -> Result<(), FileSystemError> {
+        match self {
+            Self::Stub(map) => {
+                map.insert(filename.to_string(), o);
+            }
+            Self::Directory(dir) => {
+                let path = dir.join(filename);
+                Self::write_file_to_directory(&path, o)?;
+            }
+        }
+        Ok(())
+    }
+
     fn read_file_names_and_files_from_directory(
         directory: &Path,
     ) -> Result<HashMap<String, T>, FileSystemError> {
@@ -150,6 +164,21 @@ impl<T: Clone + Serialize + DeserializeOwned> FileSystem<T> {
 
         return Ok(to_return);
     }
+
+    fn write_file_to_directory(path: &PathBuf, o: T) -> Result<(), FileSystemError> {
+        match serde_json::to_string(&o) {
+            Err(e) => {
+                return Err(FileSystemError::CouldntSerialize);
+            }
+            Ok(s) => {
+                let result = fs::write(path, s);
+                if let Err(e) = result {
+                    return Err(FileSystemError::CouldntWriteFile);
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -158,7 +187,9 @@ pub enum FileSystemError {
     CouldntReadDirectory,
     CouldntReadSubpath,
     CouldntReadFile,
+    CouldntWriteFile,
     CouldntDeserialize,
+    CouldntSerialize,
 }
 
 // End Resources
