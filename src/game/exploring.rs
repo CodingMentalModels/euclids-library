@@ -144,15 +144,13 @@ fn movement_system(
 fn wait_system(
     mut commands: Commands,
     mut wait_event_reader: EventReader<WaitEvent>,
-    mut query: Query<(Entity, &mut LocationComponent, Option<&PlayerComponent>)>,
     mut time_elapsed: ResMut<TimeElapsed>,
-    mut log: ResMut<LogState>,
-    map: Res<LoadedMap>,
 ) {
-    for wait_event in wait_event_reader.iter() {
+    for _wait_event in wait_event_reader.iter() {
         end_turn(&mut commands, &mut time_elapsed, MOVEMENT_TICKS);
     }
 }
+
 fn update_positions(mut query: Query<(&LocationComponent, &mut Transform)>) {
     for (location, mut transform) in query.iter_mut() {
         let screen_coordinates =

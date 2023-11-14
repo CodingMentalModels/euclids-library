@@ -74,6 +74,8 @@ impl Enemy {
 pub enum AICommand {
     Wait(u8),
     Move(Direction),
+    MoveTowardsPlayer,
+    Attack,
     Speak(String),
 }
 
@@ -82,6 +84,8 @@ impl AICommand {
         match self {
             Self::Wait(ticks) => *ticks,
             Self::Move(_direction) => MOVEMENT_TICKS,
+            Self::MoveTowardsPlayer => MOVEMENT_TICKS,
+            Self::Attack => MOVEMENT_TICKS,
             Self::Speak(_s) => AI_SPEAK_TICKS,
         }
     }
