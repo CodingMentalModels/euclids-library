@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use super::{character::Damage, map::TileLocation, menu::MenuType, resources::GameState};
+use super::{character::Damage, map::TileLocation, resources::GameState};
+use crate::menu::ExploringMenuType;
 
 pub struct EventsPlugin;
 
@@ -32,7 +33,10 @@ fn change_state_system(
 pub struct UpdateUIEvent;
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
-pub struct OpenMenuEvent(pub MenuType);
+pub struct OpenMenuEvent(pub ExploringMenuType);
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
+pub struct MenuInputEvent(pub KeyCode);
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
 pub enum ProgressPromptEvent {
@@ -85,6 +89,9 @@ impl ChooseDirectionEvent {
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
 pub struct StateChangeEvent(pub GameState);
 
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
+pub struct DespawnBoundEntitiesEvent(pub GameState);
+
 #[derive(Debug, Clone, Event)]
 pub struct DamageEvent(pub Entity, pub Damage);
 
@@ -129,3 +136,10 @@ impl Direction {
 }
 
 // End Events
+
+// Components
+
+#[derive(Component, Clone, Copy)]
+pub struct BoundStateComponent(pub GameState);
+
+// End Components

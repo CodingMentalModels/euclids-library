@@ -4,19 +4,19 @@ use bevy::prelude::*;
 
 use super::character::{ActionClockComponent, BodyComponent, LocationComponent};
 use super::enemy::{AIComponent, EnemyComponent};
-use super::events::DamageEvent;
+use super::events::{BoundStateComponent, DamageEvent, DespawnBoundEntitiesEvent};
 use super::resources::RngResource;
-use super::ui_state::LogState;
 use super::{
-    constants::*,
-    events::{CameraMovementEvent, TryMoveEvent},
+    events::TryMoveEvent,
     map::{MapLayer, SurfaceTile, Tile},
     npc::NPCComponent,
     particle::{ParticleComponent, ParticleEmitterComponent, ParticleTiming},
     player::PlayerComponent,
     resources::{GameState, LoadedFont, LoadedMap},
-    ui_state::{AsciiTileAppearance, TileAppearance, TileGrid},
 };
+use crate::constants::*;
+use crate::game::map::{AsciiTileAppearance, TileAppearance, TileGrid};
+use crate::ui::LogState;
 
 pub struct ExploringPlugin;
 
@@ -25,10 +25,9 @@ impl Plugin for ExploringPlugin {
         let generalized_exploring =
             || in_state(GameState::Exploring).or_else(in_state(GameState::NonPlayerTurns));
         app.add_systems(OnEnter(GameState::LoadingMap), load_map_system)
-            .add_systems(OnEnter(GameState::Exploring), spawn_map)
+            .add_systems(OnEnter(GameState::Exploring), spawn_map_system)
             .add_systems(Update, movement_system.run_if(generalized_exploring()))
             .add_systems(Update, update_positions.run_if(generalized_exploring()))
-            .add_systems(Update, move_camera_system.run_if(generalized_exploring()))
             .add_systems(Update, handle_damage_system.run_if(generalized_exploring()))
             .add_systems(
                 Update,
@@ -49,11 +48,22 @@ impl Plugin for ExploringPlugin {
             .add_systems(
                 Update,
                 process_non_player_turn.run_if(in_state(GameState::NonPlayerTurns)),
+            )
+            .add_systems(
+                Update,
+                despawn_bound_entities.run_if(on_event::<DespawnBoundEntitiesEvent>()),
             );
     }
 }
 
+//Events
+
+// End Events
+
 // Resources
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Resource)]
+pub struct ExploringUIState {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Resource)]
 pub struct ShouldSpawnMap(pub bool);
@@ -80,7 +90,7 @@ fn load_map_system(mut commands: Commands) {
     );
     map_layer.update_edges(&Tile::wall());
     map_layer
-        .update(5, 5, Tile::empty(SurfaceTile::Fireplace))
+        .update(Tile::empty(SurfaceTile::Fireplace), 5, 5)
         .expect("5, 5 exists because we're setting it up that way.");
 
     commands.insert_resource(LoadedMap(map_layer.into()));
@@ -134,17 +144,7 @@ fn update_positions(mut query: Query<(&LocationComponent, &mut Transform)>) {
     }
 }
 
-fn move_camera_system(
-    mut camera_movement_event_reader: EventReader<CameraMovementEvent>,
-    mut query: Query<&mut Transform, With<Camera2d>>,
-) {
-    let mut transform = query.single_mut();
-    for event in camera_movement_event_reader.iter() {
-        transform.translation += event.0.as_vector().extend(0.) * CAMERA_MOVE_SPEED;
-    }
-}
-
-fn spawn_map(
+fn spawn_map_system(
     mut commands: Commands,
     character_query: Query<
         (
@@ -180,14 +180,19 @@ fn spawn_map(
         .expect("Player's layer must exist.");
 
     let tile_grid = TileGrid::from_map_layer(map_layer.clone());
-    tile_grid.render(&mut commands, font.0.clone());
+    tile_grid.render(&mut commands, font.0.clone(), GameState::Exploring);
 
     map_layer
         .as_location_and_tile_vector()
         .into_iter()
         .for_each(|(location, tile)| {
             if let Some(particle_spec) = tile.get_surface().get_particle_spec() {
-                particle_spec.render(&mut commands, font.0.clone(), location);
+                particle_spec.render(
+                    &mut commands,
+                    font.0.clone(),
+                    GameState::Exploring,
+                    location,
+                );
             };
         });
 
@@ -210,6 +215,7 @@ fn spawn_map(
                 .get_entity(entity)
                 .expect("Entity must exist if it was returned from the query."),
             font.0.clone(),
+            GameState::Exploring,
             TileGrid::tile_to_world_coordinates(location.0.get_tile_location()),
         );
 
@@ -241,6 +247,7 @@ fn emit_particles_system(
     mut emitter_query: Query<(&mut ParticleEmitterComponent, &Transform)>,
     time: Res<Time>,
     font: Res<LoadedFont>,
+    current_state: Res<State<GameState>>,
 ) {
     for (mut emitter, transform) in emitter_query.iter_mut() {
         emitter.timer.tick(time.delta());
@@ -249,6 +256,7 @@ fn emit_particles_system(
             emitter.emit(
                 &mut commands,
                 font.0.clone(),
+                *current_state.get(),
                 transform.translation.truncate(),
             );
             match &emitter.spec.emission_timing {
@@ -362,6 +370,20 @@ fn process_non_player_turn(
         }
         None => {
             commands.insert_resource(NextState(Some(GameState::Exploring)));
+        }
+    }
+}
+
+fn despawn_bound_entities(
+    mut commands: Commands,
+    mut event_reader: EventReader<DespawnBoundEntitiesEvent>,
+    query: Query<(Entity, &BoundStateComponent)>,
+) {
+    for event in event_reader.iter() {
+        for (entity, bound) in query.iter() {
+            if event.0 == bound.0 {
+                commands.entity(entity).despawn();
+            }
         }
     }
 }

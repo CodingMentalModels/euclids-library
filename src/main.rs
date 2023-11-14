@@ -1,20 +1,30 @@
+mod assets;
+mod camera;
+mod constants;
 mod game;
+mod input;
+mod map_editor;
+mod menu;
+mod specs;
+mod ui;
 
 use bevy::prelude::*;
 use bevy_mod_raycast::DefaultRaycastingPlugin;
 
-use game::assets::AssetsPlugin;
+use assets::AssetsPlugin;
 use game::events::EventsPlugin;
 use game::exploring::ExploringPlugin;
-use game::input::InputPlugin;
 use game::interacting::InteractingPlugin;
-use game::menu::MenuPlugin;
 use game::pause::PausePlugin;
 use game::world::WorldPlugin;
+use input::InputPlugin;
+use menu::MenuPlugin;
 
-use crate::game::input::MouseoverRaycastSet;
+use crate::camera::CameraMovementPlugin;
 use crate::game::resources::*;
-use crate::game::ui::UIPlugin;
+use crate::input::MouseoverRaycastSet;
+use crate::map_editor::map_editor::MapEditorPlugin;
+use crate::ui::UIPlugin;
 
 fn main() {
     App::new()
@@ -23,6 +33,7 @@ fn main() {
             DefaultRaycastingPlugin::<MouseoverRaycastSet>::default(),
         ))
         .add_plugins(AssetsPlugin)
+        .add_plugins(CameraMovementPlugin)
         .add_plugins(EventsPlugin)
         .add_plugins(UIPlugin)
         .add_plugins(InputPlugin)
@@ -31,6 +42,7 @@ fn main() {
         .add_plugins(ExploringPlugin)
         .add_plugins(InteractingPlugin)
         .add_plugins(MenuPlugin)
+        .add_plugins(MapEditorPlugin)
         .add_state::<GameState>()
         .run();
 }

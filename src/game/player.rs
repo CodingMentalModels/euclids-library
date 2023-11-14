@@ -1,19 +1,12 @@
-use std::collections::HashMap;
-use std::collections::HashSet;
-
 use bevy::prelude::*;
 
-use rand::rngs::ThreadRng;
-use rand::Rng;
 use serde::Deserialize;
 use serde::Serialize;
 
 use super::character::BodyComponent;
 use super::character::BodyPartTreeNode;
 use super::character::LocationComponent;
-use super::constants::*;
 use super::map::MapLocation;
-use super::map::TileLocation;
 
 // Components
 #[derive(Component, Clone, Copy)]

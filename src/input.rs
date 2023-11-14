@@ -1,6 +1,4 @@
-use std::collections::HashSet;
 use std::time::Duration;
-use std::unreachable;
 
 use bevy::prelude::*;
 use bevy_mod_raycast::{
@@ -8,14 +6,15 @@ use bevy_mod_raycast::{
 };
 
 use super::constants::*;
-use super::events::DamageEvent;
-use super::events::{
-    CameraMovementEvent, CameraZoomEvent, ChooseDirectionEvent, Direction, OpenMenuEvent,
-    ProgressPromptEvent, StateChangeEvent, TryMoveEvent,
-};
 use super::menu::MenuType;
-use super::player::PlayerComponent;
-use super::resources::GameState;
+use crate::game::events::{
+    CameraMovementEvent, CameraZoomEvent, ChooseDirectionEvent, DespawnBoundEntitiesEvent,
+    Direction, OpenMenuEvent, ProgressPromptEvent, StateChangeEvent, TryMoveEvent,
+};
+use crate::game::events::{DamageEvent, MenuInputEvent};
+use crate::game::player::PlayerComponent;
+use crate::game::resources::GameState;
+use crate::menu::ExploringMenuType;
 
 pub struct InputPlugin;
 
@@ -23,6 +22,7 @@ impl Plugin for InputPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<PauseUnpauseEvent>()
             .add_event::<OpenMenuEvent>()
+            .add_event::<MenuInputEvent>()
             .add_event::<CameraMovementEvent>()
             .add_event::<CameraZoomEvent>()
             .add_event::<TryMoveEvent>()
@@ -30,6 +30,7 @@ impl Plugin for InputPlugin {
             .add_event::<StateChangeEvent>()
             .add_event::<ChooseDirectionEvent>()
             .add_event::<ProgressPromptEvent>()
+            .add_event::<DespawnBoundEntitiesEvent>()
             .insert_resource(KeyHoldTimer::default())
             .add_systems(
                 First,
@@ -156,10 +157,11 @@ pub fn input_system(
     mut timer: ResMut<KeyHoldTimer>,
     time: Res<Time>,
     mut pause_unpause_event_writer: EventWriter<PauseUnpauseEvent>,
-    state_change_event_writer: EventWriter<StateChangeEvent>,
+    mut state_change_event_writer: EventWriter<StateChangeEvent>,
     camera_movement_event_writer: EventWriter<CameraMovementEvent>,
     zoom_event_writer: EventWriter<CameraZoomEvent>,
     open_menu_event_writer: EventWriter<OpenMenuEvent>,
+    menu_input_event_writer: EventWriter<MenuInputEvent>,
     movement_event_writer: EventWriter<TryMoveEvent>,
     choose_direction_event_writer: EventWriter<ChooseDirectionEvent>,
     progress_prompt_event_writer: EventWriter<ProgressPromptEvent>,
@@ -171,6 +173,10 @@ pub fn input_system(
 
     if keyboard_input.just_pressed(KeyCode::Escape) {
         pause_unpause_event_writer.send(PauseUnpauseEvent);
+    }
+
+    if keyboard_input.pressed(KeyCode::M) && keyboard_input.pressed(KeyCode::ControlLeft) {
+        state_change_event_writer.send(StateChangeEvent(GameState::EditingMapMenu));
     }
 
     match state.get() {
@@ -201,12 +207,22 @@ pub fn input_system(
             );
             handle_choose_direction(&keyboard_input, choose_direction_event_writer);
         }
-        GameState::Menu => {
+        GameState::PlayerMenu | GameState::EditingMapMenu => {
             handle_exit(
                 &keyboard_input,
                 state_change_event_writer,
                 GameState::Exploring,
             );
+            handle_menu_input(&keyboard_input, menu_input_event_writer);
+        }
+        GameState::EditingMap => {
+            handle_camera_movement(
+                &keyboard_input,
+                &mut timer,
+                time.delta(),
+                camera_movement_event_writer,
+            );
+            handle_camera_zoom(&keyboard_input, &mut timer, time.delta(), zoom_event_writer);
         }
         _ => {}
     }
@@ -322,7 +338,20 @@ fn handle_open_menu(
     if keyboard_input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight])
         && keyboard_input.just_pressed(KeyCode::Key2)
     {
-        open_menu_event_writer.send(OpenMenuEvent(MenuType::Character));
+        open_menu_event_writer.send(OpenMenuEvent(ExploringMenuType::Character));
+    }
+}
+
+fn handle_menu_input(
+    keyboard_input: &Res<Input<KeyCode>>,
+    mut menu_input_event_writer: EventWriter<MenuInputEvent>,
+) {
+    if keyboard_input.get_just_pressed().len() == 1 {
+        let keycode = keyboard_input
+            .get_just_pressed()
+            .next()
+            .expect("We just checked that there's exactly one.");
+        menu_input_event_writer.send(MenuInputEvent(*keycode));
     }
 }
 

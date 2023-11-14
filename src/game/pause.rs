@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
-use crate::game::input::{input_system, PauseUnpauseEvent};
 use crate::game::resources::*;
+use crate::input::{input_system, PauseUnpauseEvent};
 
 pub struct PausePlugin;
 

@@ -6,7 +6,6 @@ use super::{
     events::{ChooseDirectionEvent, ProgressPromptEvent, UpdateUIEvent},
     player::PlayerComponent,
     resources::GameState,
-    ui_state::InteractingUIState,
 };
 
 pub struct InteractingPlugin;
@@ -36,6 +35,11 @@ impl Plugin for InteractingPlugin {
 }
 
 // Resources
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Resource)]
+pub struct InteractingUIState {
+    pub interacting_state: InteractingState,
+}
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Resource)]
 pub enum InteractingState {

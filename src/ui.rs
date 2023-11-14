@@ -1,18 +1,18 @@
-use std::unimplemented;
-
 use bevy::{asset::LoadState, prelude::*};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use bevy_mod_raycast::RaycastSource;
 use egui::{Align2, Color32, Frame, Ui};
 
-use crate::game::constants::*;
-use crate::game::input::MouseoverRaycastSet;
+use crate::constants::*;
 use crate::game::resources::*;
+use crate::input::MouseoverRaycastSet;
 
-use super::dialog::Dialog;
-use super::events::{CameraZoomEvent, UpdateUIEvent};
-use super::interacting::{update_interacting_ui_state_system, Interactable, InteractingState};
-use super::ui_state::{InteractingUIState, LogState, MenuUIState};
+use crate::game::dialog::Dialog;
+use crate::game::events::{CameraZoomEvent, UpdateUIEvent};
+use crate::game::interacting::{
+    update_interacting_ui_state_system, Interactable, InteractingState, InteractingUIState,
+};
+use crate::menu::MenuUIState;
 
 pub struct UIPlugin;
 
@@ -20,14 +20,14 @@ impl Plugin for UIPlugin {
     fn build(&self, app: &mut App) {
         let generalized_exploring =
             || in_state(GameState::Exploring).or_else(in_state(GameState::NonPlayerTurns));
+        let camera_zoom_states =
+            || generalized_exploring().or_else(in_state(GameState::EditingMap));
         app.add_event::<UpdateUIEvent>()
+            .add_event::<ToastMessageEvent>()
             .add_plugins(EguiPlugin)
             .add_systems(OnEnter(GameState::LoadingUI), configure_visuals)
             .add_systems(OnEnter(GameState::LoadingUI), ui_load_system)
-            .add_systems(
-                Update,
-                update_camera_zoom.run_if(in_state(GameState::Exploring)),
-            )
+            .add_systems(Update, update_camera_zoom.run_if(camera_zoom_states()))
             .add_systems(Update, render_exploring_ui.run_if(generalized_exploring()))
             .add_systems(
                 Update,
@@ -35,11 +35,22 @@ impl Plugin for UIPlugin {
                     .after(update_interacting_ui_state_system)
                     .run_if(in_state(GameState::Interacting)),
             )
-            .add_systems(Update, render_menu_ui.run_if(in_state(GameState::Menu)));
+            .add_systems(
+                Update,
+                trigger_toast_message.run_if(on_event::<ToastMessageEvent>()),
+            )
+            .add_systems(Update, show_toast_message);
 
         app.insert_resource(MaterialCache::empty());
     }
 }
+
+// Events
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Event)]
+pub struct ToastMessageEvent(pub String);
+
+// End Events
 
 // Systems
 fn configure_visuals(mut ctx: EguiContexts) {
@@ -86,13 +97,42 @@ fn update_camera_zoom(
     }
 }
 
+fn trigger_toast_message(mut commands: Commands, mut event_reader: EventReader<ToastMessageEvent>) {
+    for event in event_reader.iter() {
+        commands.insert_resource(ToastMessage(
+            Timer::from_seconds(TOAST_MESSAGE_TIME_IN_SECONDS, TimerMode::Once),
+            event.0.clone(),
+        ));
+    }
+}
+
+fn show_toast_message(
+    mut commands: Commands,
+    mut contexts: EguiContexts,
+    time: Res<Time>,
+    toast_message: Option<ResMut<ToastMessage>>,
+) {
+    match toast_message {
+        Some(mut toast_message) => {
+            let ctx = contexts.ctx_mut();
+            egui::TopBottomPanel::top("top-panel").show(ctx, |ui| {
+                ui.label(get_warning_text(toast_message.1.clone()));
+            });
+            if toast_message.0.tick(time.delta()).finished() {
+                commands.remove_resource::<ToastMessage>();
+            }
+        }
+        None => {}
+    }
+}
+
 fn render_exploring_ui(mut contexts: EguiContexts, log_state: Res<LogState>) {
     let ctx = contexts.ctx_mut();
 
     egui::TopBottomPanel::bottom("bottom-panel").show(ctx, |ui| {
         egui::SidePanel::left("log-panel")
             .min_width(LOG_WINDOW_SIZE.0)
-            .show_inside(ui, |mut ui| {
+            .show_inside(ui, |ui| {
                 render_log(ui, &log_state);
             });
     });
@@ -134,29 +174,41 @@ fn render_interacting_ui(mut contexts: EguiContexts, ui_state: ResMut<Interactin
     }
 }
 
-fn render_menu_ui(mut contexts: EguiContexts, ui_state: ResMut<MenuUIState>) {
-    let ctx = contexts.ctx_mut();
-    let size = egui::Vec2::new(ctx.screen_rect().width(), ctx.screen_rect().height())
-        * MENU_TO_SCREEN_RATIO;
-    egui::Window::new("menu-area")
-        .anchor(
-            Align2::CENTER_TOP,
-            egui::Vec2::new(
-                0.,
-                (ctx.screen_rect().height() * (1. - MENU_TO_SCREEN_RATIO) / 2.),
-            ),
-        )
-        .fixed_size(size)
-        .frame(Frame::none().fill(Color32::BLACK))
-        .title_bar(false)
-        .show(ctx, |ui| {
-            //  Workaround for https://users.rust-lang.org/t/egui-questions-regarding-window-size/88753/3
-            ui.set_width(ui.available_width());
-            ui.set_height(ui.available_height());
+// End Systems
 
-            ui.label(ui_state.to_text());
-        });
+// Resources
+#[derive(Resource, Clone, Default)]
+pub struct ToastMessage(Timer, String);
+
+#[derive(Resource, Clone, Default)]
+pub struct LogState(Vec<egui::RichText>);
+
+impl LogState {
+    pub fn get_messages(&self) -> Vec<egui::RichText> {
+        self.0.clone()
+    }
+
+    pub fn log_string(&mut self, message: &str) {
+        self.0.push(
+            egui::RichText::new(message.to_string())
+                .size(LOG_TEXT_SIZE)
+                .color(egui::Color32::WHITE),
+        );
+    }
+
+    pub fn log_string_color(&mut self, message: &str, color: egui::Color32) {
+        self.0.push(
+            egui::RichText::new(message.to_string())
+                .color(color)
+                .size(LOG_TEXT_SIZE),
+        );
+    }
+
+    pub fn log(&mut self, message: egui::RichText) {
+        self.0.push(message);
+    }
 }
+// End Resources
 
 // Components
 
@@ -180,14 +232,19 @@ fn render_log(ui: &mut Ui, log_state: &LogState) {
         });
 }
 
-fn get_underlined_text(s: String) -> egui::RichText {
+pub fn get_underlined_text(s: String) -> egui::RichText {
     get_default_text(s).underline()
 }
 
-fn get_default_text(s: String) -> egui::RichText {
+pub fn get_default_text(s: String) -> egui::RichText {
     egui::RichText::new(s)
         .size(DEFAULT_FONT_SIZE)
         .color(egui::Color32::WHITE)
 }
 
+pub fn get_warning_text(s: String) -> egui::RichText {
+    egui::RichText::new(s)
+        .size(DEFAULT_FONT_SIZE)
+        .color(egui::Color32::RED)
+}
 // End Helper Functions
