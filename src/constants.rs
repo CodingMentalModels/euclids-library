@@ -9,6 +9,7 @@ pub const DEFAULT_ARM_SIZE: u8 = 15;
 pub const DEFAULT_LEG_SIZE: u8 = 20;
 pub const DEFAULT_HAND_SIZE: u8 = 5;
 pub const DEFAULT_FOOT_SIZE: u8 = 5;
+pub const DEFAULT_TICKS_PER_TURN: u8 = 10;
 pub const MOVEMENT_TICKS: u8 = 10;
 pub const AI_SPEAK_TICKS: u8 = 10;
 
@@ -18,6 +19,7 @@ pub const MENU_TO_SCREEN_RATIO: f32 = 0.8;
 pub const MENU_INDENTATION: &str = "    ";
 pub const LOG_WINDOW_SIZE: (f32, f32) = (540., 200.);
 pub const LOG_TEXT_SIZE: f32 = 14.;
+pub const ACTION_PANEL_SIZE: (f32, f32) = (200., 200.);
 pub const KEY_HOLD_DELAY_IN_MILLIS: u64 = 400;
 pub const TOAST_MESSAGE_TIME_IN_SECONDS: f32 = 3.;
 

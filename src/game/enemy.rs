@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     character::{ActionClockComponent, LocationComponent},
+    events::Direction,
     map::MapLocation,
 };
 use crate::constants::*;

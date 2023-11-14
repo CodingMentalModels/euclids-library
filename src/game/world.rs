@@ -13,6 +13,10 @@ impl Plugin for WorldPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             OnEnter(GameState::InitializingWorld),
+            initialize_world_system,
+        )
+        .add_systems(
+            OnEnter(GameState::InitializingWorld),
             initialize_player_system,
         )
         .add_systems(
@@ -26,7 +30,23 @@ impl Plugin for WorldPlugin {
     }
 }
 
+// Resources
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Resource)]
+pub struct TimeElapsed(pub u64);
+
+impl TimeElapsed {
+    pub fn increment(&mut self, amount: u64) {
+        self.0 = self.0 + amount;
+    }
+}
+
+// End Resources
+
 // Systems
+
+fn initialize_world_system(mut commands: Commands) {
+    commands.insert_resource(TimeElapsed::default());
+}
 
 fn initialize_player_system(mut commands: Commands) {
     let player = Player::new(

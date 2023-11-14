@@ -1,13 +1,15 @@
 use std::collections::HashSet;
 
 use bevy::prelude::*;
+use bevy_egui::EguiContexts;
 
 use super::character::{ActionClockComponent, BodyComponent, LocationComponent};
-use super::enemy::{AIComponent, EnemyComponent};
+use super::enemy::{AICommand, AIComponent, EnemyComponent};
 use super::events::{BoundStateComponent, DamageEvent, DespawnBoundEntitiesEvent};
 use super::resources::RngResource;
+use super::world::TimeElapsed;
 use super::{
-    events::TryMoveEvent,
+    events::{Direction, TryMoveEvent},
     map::{MapLayer, SurfaceTile, Tile},
     npc::NPCComponent,
     particle::{ParticleComponent, ParticleEmitterComponent, ParticleTiming},
@@ -16,7 +18,7 @@ use super::{
 };
 use crate::constants::*;
 use crate::game::map::{AsciiTileAppearance, TileAppearance, TileGrid};
-use crate::ui::LogState;
+use crate::ui::{get_default_text, render_log, LogState};
 
 pub struct ExploringPlugin;
 
@@ -49,6 +51,7 @@ impl Plugin for ExploringPlugin {
                 Update,
                 process_non_player_turn.run_if(in_state(GameState::NonPlayerTurns)),
             )
+            .add_systems(Update, render_exploring_ui.run_if(generalized_exploring()))
             .add_systems(
                 Update,
                 despawn_bound_entities.run_if(on_event::<DespawnBoundEntitiesEvent>()),
@@ -102,6 +105,7 @@ fn movement_system(
     mut commands: Commands,
     mut movement_event_reader: EventReader<TryMoveEvent>,
     mut query: Query<(Entity, &mut LocationComponent, Option<&PlayerComponent>)>,
+    mut time_elapsed: ResMut<TimeElapsed>,
     mut log: ResMut<LogState>,
     map: Res<LoadedMap>,
 ) {
@@ -124,7 +128,7 @@ fn movement_system(
                         Ok(is_traversable) => {
                             if is_traversable {
                                 *location = final_location;
-                                end_turn(&mut commands, MOVEMENT_TICKS);
+                                end_turn(&mut commands, &mut time_elapsed, MOVEMENT_TICKS);
                             } else {
                                 log.log_string("Trying to traverse non-traversable terrain.");
                             }
@@ -332,7 +336,7 @@ fn despawn_particles_offscreen_system(
 
 fn determine_turn_order_system(
     mut commands: Commands,
-    non_player_query: Query<(Entity, &ActionClockComponent)>,
+    non_player_query: Query<(Entity, &ActionClockComponent), Without<PlayerComponent>>,
 ) {
     let mut results: Vec<(Entity, &ActionClockComponent)> =
         non_player_query.iter().collect::<Vec<_>>();
@@ -349,6 +353,7 @@ fn process_non_player_turn(
     mut commands: Commands,
     mut non_player_turns: ResMut<NonPlayerTurnOrder>,
     mut non_player_query: Query<(Entity, &mut ActionClockComponent, &mut AIComponent)>,
+    mut move_event_writer: EventWriter<TryMoveEvent>,
     mut log: ResMut<LogState>,
     non_player_turn_length: Res<NonPlayerTurnLength>,
 ) {
@@ -358,7 +363,25 @@ fn process_non_player_turn(
                 if acting_entity == non_player_entity {
                     if action_clock.tick_and_is_finished(non_player_turn_length.0) {
                         log.log_string(&format!("{:?} takes its turn", non_player_entity));
-                        action_clock.reset(ai.next().get_ticks());
+                        let acting_entity_action = ai.next();
+                        match &acting_entity_action {
+                            AICommand::Wait(amount) => log.log_string(&format!(
+                                "{:?} waits for {}",
+                                non_player_entity,
+                                amount.to_string()
+                            )),
+                            AICommand::Move(direction) => {
+                                move_event_writer.send(TryMoveEvent(acting_entity, *direction));
+                                log.log_string(&format!(
+                                    "{:?} moves {:?}",
+                                    non_player_entity, direction
+                                ));
+                            }
+                            AICommand::Speak(content) => {
+                                log.log_string(&format!("{:?} says {}", non_player_entity, content))
+                            }
+                        }
+                        action_clock.reset(acting_entity_action.get_ticks());
                     } else {
                         log.log_string(&format!(
                             "{:?} didn't get to take its turn",
@@ -372,6 +395,38 @@ fn process_non_player_turn(
             commands.insert_resource(NextState(Some(GameState::Exploring)));
         }
     }
+}
+
+fn render_exploring_ui(
+    mut contexts: EguiContexts,
+    log_state: Res<LogState>,
+    non_player_turn_length: Option<Res<NonPlayerTurnLength>>,
+    time_elapsed: Res<TimeElapsed>,
+) {
+    let ctx = contexts.ctx_mut();
+
+    egui::TopBottomPanel::bottom("bottom-panel").show(ctx, |ui| {
+        egui::SidePanel::left("log-panel")
+            .min_width(LOG_WINDOW_SIZE.0)
+            .show_inside(ui, |ui| {
+                render_log(ui, &log_state);
+            });
+    });
+
+    egui::SidePanel::right("action-panel")
+        .min_width(ACTION_PANEL_SIZE.0)
+        .show(ctx, |ui| {
+            ui.label(get_default_text(format!(
+                "Time: {}",
+                time_elapsed.0.to_string()
+            )));
+            ui.label(get_default_text(format!(
+                "Last Action: {}",
+                non_player_turn_length
+                    .map(|maybe_resource| maybe_resource.0.to_string())
+                    .unwrap_or("".to_string())
+            )));
+        });
 }
 
 fn despawn_bound_entities(
@@ -397,7 +452,8 @@ struct PlayerSprite;
 // End Components
 
 // Helper Functions
-fn end_turn(mut commands: &mut Commands, n_ticks: u8) {
+fn end_turn(commands: &mut Commands, time_elapsed: &mut TimeElapsed, n_ticks: u8) {
+    time_elapsed.increment(n_ticks as u64);
     commands.insert_resource(NonPlayerTurnLength(n_ticks));
     commands.insert_resource(NextState(Some(GameState::NonPlayerTurns)));
 }
