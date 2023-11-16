@@ -9,7 +9,8 @@ use super::constants::*;
 use super::menu::MenuType;
 use crate::game::events::{
     CameraMovementEvent, CameraZoomEvent, ChooseDirectionEvent, DespawnBoundEntitiesEvent,
-    Direction, OpenMenuEvent, ProgressPromptEvent, StateChangeEvent, TryMoveEvent, WaitEvent,
+    Direction, OpenMenuEvent, ProgressPromptEvent, StateChangeEvent, TryMoveEvent,
+    TryMoveOrAttackEvent, WaitEvent,
 };
 use crate::game::events::{DamageEvent, MenuInputEvent};
 use crate::game::player::PlayerComponent;
@@ -25,7 +26,7 @@ impl Plugin for InputPlugin {
             .add_event::<MenuInputEvent>()
             .add_event::<CameraMovementEvent>()
             .add_event::<CameraZoomEvent>()
-            .add_event::<TryMoveEvent>()
+            .add_event::<TryMoveOrAttackEvent>()
             .add_event::<WaitEvent>()
             .add_event::<DamageEvent>()
             .add_event::<StateChangeEvent>()
@@ -163,6 +164,7 @@ pub fn input_system(
     zoom_event_writer: EventWriter<CameraZoomEvent>,
     open_menu_event_writer: EventWriter<OpenMenuEvent>,
     menu_input_event_writer: EventWriter<MenuInputEvent>,
+    move_or_attack_event_writer: EventWriter<TryMoveOrAttackEvent>,
     movement_event_writer: EventWriter<TryMoveEvent>,
     wait_event_writer: EventWriter<WaitEvent>,
     choose_direction_event_writer: EventWriter<ChooseDirectionEvent>,
@@ -194,7 +196,7 @@ pub fn input_system(
                 &keyboard_input,
                 &mut timer,
                 time.delta(),
-                movement_event_writer,
+                move_or_attack_event_writer,
                 wait_event_writer,
                 player_entity_query,
             );
@@ -258,7 +260,7 @@ fn handle_movement(
     keyboard_input: &Res<Input<KeyCode>>,
     timer: &mut KeyHoldTimer,
     delta: Duration,
-    mut movement_event_writer: EventWriter<TryMoveEvent>,
+    mut move_or_attack_event_writer: EventWriter<TryMoveOrAttackEvent>,
     mut wait_event_writer: EventWriter<WaitEvent>,
     player_query: Query<Entity, With<PlayerComponent>>,
 ) {
@@ -268,7 +270,7 @@ fn handle_movement(
     match get_direction_from_keycode(keyboard_input) {
         Some(direction) => {
             if timer.tick_and_should_trigger(delta, keyboard_input) {
-                movement_event_writer.send(TryMoveEvent(player_entity, direction));
+                move_or_attack_event_writer.send(TryMoveOrAttackEvent(player_entity, direction));
             }
         }
         _ => {

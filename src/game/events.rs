@@ -61,7 +61,13 @@ impl CameraMovementEvent {
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
+pub struct TryMoveOrAttackEvent(pub Entity, pub Direction);
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
 pub struct TryMoveEvent(pub Entity, pub Direction);
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
+pub struct AttackEvent(pub Entity, pub Entity);
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Event)]
 pub struct WaitEvent(pub Entity);

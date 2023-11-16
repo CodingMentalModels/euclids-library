@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::unimplemented;
 
 use bevy::prelude::*;
@@ -6,11 +6,13 @@ use bevy_egui::EguiContexts;
 
 use super::character::{ActionClockComponent, BodyComponent, LocationComponent};
 use super::enemy::{AICommand, AIComponent, EnemyComponent};
-use super::events::{BoundStateComponent, DamageEvent, DespawnBoundEntitiesEvent, WaitEvent};
+use super::events::{
+    BoundStateComponent, DamageEvent, DespawnBoundEntitiesEvent, TryMoveOrAttackEvent, WaitEvent,
+};
 use super::resources::RngResource;
 use super::world::TimeElapsed;
 use super::{
-    events::{Direction, TryMoveEvent},
+    events::TryMoveEvent,
     map::{MapLayer, SurfaceTile, Tile},
     npc::NPCComponent,
     particle::{ParticleComponent, ParticleEmitterComponent, ParticleTiming},
@@ -18,6 +20,7 @@ use super::{
     resources::{GameState, LoadedFont, LoadedMap},
 };
 use crate::constants::*;
+use crate::game::events::AttackEvent;
 use crate::game::map::{AsciiTileAppearance, TileAppearance, TileGrid};
 use crate::ui::{get_default_text, render_log, LogState};
 
@@ -27,9 +30,16 @@ impl Plugin for ExploringPlugin {
     fn build(&self, app: &mut App) {
         let generalized_exploring =
             || in_state(GameState::Exploring).or_else(in_state(GameState::NonPlayerTurns));
-        app.add_systems(OnEnter(GameState::LoadingMap), load_map_system)
+        app.add_event::<TryMoveEvent>()
+            .add_event::<AttackEvent>()
+            .add_systems(OnEnter(GameState::LoadingMap), load_map_system)
             .add_systems(OnEnter(GameState::Exploring), spawn_map_system)
+            .add_systems(
+                Update,
+                handle_move_or_attack_system.run_if(in_state(GameState::Exploring)),
+            )
             .add_systems(Update, movement_system.run_if(generalized_exploring()))
+            .add_systems(Update, attack_system.run_if(in_state(GameState::Exploring)))
             .add_systems(Update, wait_system.run_if(generalized_exploring()))
             .add_systems(Update, update_positions.run_if(generalized_exploring()))
             .add_systems(Update, handle_damage_system.run_if(generalized_exploring()))
@@ -103,6 +113,51 @@ fn load_map_system(mut commands: Commands) {
     commands.insert_resource(ShouldSpawnMap(true));
 }
 
+fn handle_move_or_attack_system(
+    mut move_or_attack_event_reader: EventReader<TryMoveOrAttackEvent>,
+    mut movement_event_writer: EventWriter<TryMoveEvent>,
+    mut attack_event_writer: EventWriter<AttackEvent>,
+    mut query: Query<(
+        Entity,
+        &mut LocationComponent,
+        Option<&PlayerComponent>,
+        Option<&EnemyComponent>,
+    )>,
+    map: Res<LoadedMap>,
+) {
+    let (player_entity, player_location) = query
+        .iter()
+        .filter(|(entity, location, maybe_is_player, _)| maybe_is_player.is_some())
+        .map(|(entity, location, _, _)| (entity, location))
+        .next()
+        .expect("There should be at least one player.");
+    let enemies_by_location = query
+        .iter()
+        .filter(|(entity, location, _, maybe_is_enemy)| maybe_is_enemy.is_some())
+        .map(|(entity, location, _, _)| (location.0, entity))
+        .collect::<HashMap<_, _>>();
+    for event in move_or_attack_event_reader.iter() {
+        for (entity, location, maybe_is_player, maybe_is_enemy) in query.iter() {
+            let TryMoveOrAttackEvent(entity_to_move, direction) = event;
+            if entity == *entity_to_move {
+                assert_eq!(
+                    entity, player_entity,
+                    "This system should only be used to handle player input."
+                );
+                let final_location = location.translated(direction.as_tile_location());
+                match enemies_by_location.get(&final_location.0) {
+                    None => {
+                        movement_event_writer.send(TryMoveEvent(*entity_to_move, *direction));
+                    }
+                    Some(enemy) => {
+                        attack_event_writer.send(AttackEvent(*entity_to_move, *enemy));
+                    }
+                }
+            }
+        }
+    }
+}
+
 fn movement_system(
     mut commands: Commands,
     mut movement_event_reader: EventReader<TryMoveEvent>,
@@ -152,6 +207,16 @@ fn wait_system(
     }
 }
 
+fn attack_system(
+    mut attack_event_reader: EventReader<AttackEvent>,
+    mut damage_event_writer: EventWriter<DamageEvent>,
+    mut log: ResMut<LogState>,
+) {
+    for AttackEvent(from_entity, to_entity) in attack_event_reader.iter() {
+        log.log_string(&format!("{:?} attacks {:?}", from_entity, to_entity));
+        // damage_event_writer.send(DamageEvent(to_entity, ));
+    }
+}
 fn update_positions(mut query: Query<(&LocationComponent, &mut Transform)>) {
     for (location, mut transform) in query.iter_mut() {
         let screen_coordinates =
