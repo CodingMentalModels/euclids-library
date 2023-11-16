@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::unimplemented;
 
 use bevy::prelude::*;
 use bevy_egui::EguiContexts;
@@ -363,15 +364,33 @@ fn determine_turn_order_system(
 fn process_non_player_turn(
     mut commands: Commands,
     mut non_player_turns: ResMut<NonPlayerTurnOrder>,
-    mut non_player_query: Query<(Entity, &mut ActionClockComponent, &mut AIComponent)>,
+    mut non_player_query: Query<
+        (
+            Entity,
+            &mut ActionClockComponent,
+            &mut AIComponent,
+            &LocationComponent,
+        ),
+        Without<PlayerComponent>,
+    >,
+    player_query: Query<&LocationComponent, With<PlayerComponent>>,
     mut move_event_writer: EventWriter<TryMoveEvent>,
     mut log: ResMut<LogState>,
     non_player_turn_length: Res<NonPlayerTurnLength>,
 ) {
+    let player_location = player_query
+        .get_single()
+        .expect("There shouldn't be multiple players.");
     match non_player_turns.0.pop() {
         Some(non_player_entity) => {
-            for (acting_entity, mut action_clock, mut ai) in non_player_query.iter_mut() {
-                if acting_entity == non_player_entity {
+            for (acting_entity, mut action_clock, mut ai, acting_entity_location) in
+                non_player_query.iter_mut()
+            {
+                if acting_entity == non_player_entity
+                    && acting_entity_location
+                        .0
+                        .is_on_same_floor(&player_location.0)
+                {
                     if action_clock.tick_and_is_finished(non_player_turn_length.0) {
                         log.log_string(&format!("{:?} takes its turn", non_player_entity));
                         let acting_entity_action = ai.next();
@@ -388,8 +407,22 @@ fn process_non_player_turn(
                                     non_player_entity, direction
                                 ));
                             }
+                            AICommand::MoveTowardsPlayer => {
+                                let direction = acting_entity_location
+                                    .0
+                                    .get_direction_towards(&player_location.0)
+                                    .expect("Acting entity is on our floor.");
+                                move_event_writer.send(TryMoveEvent(acting_entity, direction));
+                                log.log_string(&format!(
+                                    "{:?} moves towards player",
+                                    non_player_entity
+                                ))
+                            }
                             AICommand::Speak(content) => {
                                 log.log_string(&format!("{:?} says {}", non_player_entity, content))
+                            }
+                            AICommand::Attack => {
+                                unimplemented!()
                             }
                         }
                         action_clock.reset(acting_entity_action.get_ticks());

@@ -281,6 +281,20 @@ impl MapLocation {
     pub fn translate(&mut self, amount: TileLocation) {
         self.tile_location += amount;
     }
+
+    pub fn get_direction_towards(&self, other: &Self) -> Option<Direction> {
+        if self.get_map_layer() != other.get_map_layer() {
+            return None;
+        }
+        Some(
+            self.get_tile_location()
+                .get_direction_towards(&other.get_tile_location()),
+        )
+    }
+
+    pub fn is_on_same_floor(&self, other: &Self) -> bool {
+        self.get_map_layer() == other.get_map_layer()
+    }
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
@@ -324,6 +338,61 @@ impl TileLocation {
         let new_self = self.clone() + direction.as_tile_location();
         self.i = new_self.i;
         self.j = new_self.j;
+    }
+
+    pub fn get_direction_towards(&self, other: &Self) -> Direction {
+        let x = other.x() - self.x();
+        let y = other.y() - self.y();
+
+        match (x, y) {
+            (0, y) if y > 0 => Direction::Up,
+            (0, _) => Direction::Down,
+            (x, 0) if x > 0 => Direction::Right,
+            (_, 0) => Direction::Left,
+            _ => {
+                let ratio = (y as f32 / x as f32).abs();
+
+                match (x.signum(), y.signum()) {
+                    (1, 1) => {
+                        if ratio >= TAN_3_TAU_OVER_16 {
+                            Direction::Up
+                        } else if ratio >= TAN_TAU_OVER_16 {
+                            Direction::UpRight
+                        } else {
+                            Direction::Right
+                        }
+                    }
+                    (-1, 1) => {
+                        if ratio >= TAN_3_TAU_OVER_16 {
+                            Direction::Up
+                        } else if ratio >= TAN_TAU_OVER_16 {
+                            Direction::UpLeft
+                        } else {
+                            Direction::Left
+                        }
+                    }
+                    (1, -1) => {
+                        if ratio >= TAN_3_TAU_OVER_16 {
+                            Direction::Down
+                        } else if ratio >= TAN_TAU_OVER_16 {
+                            Direction::DownRight
+                        } else {
+                            Direction::Right
+                        }
+                    }
+                    (-1, -1) => {
+                        if ratio >= TAN_3_TAU_OVER_16 {
+                            Direction::Down
+                        } else if ratio >= TAN_TAU_OVER_16 {
+                            Direction::DownLeft
+                        } else {
+                            Direction::Left
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        }
     }
 }
 
@@ -569,6 +638,7 @@ mod tests {
             MapLayer::fill(4, 2, Tile::wall())
         );
     }
+
     #[test]
     fn test_map_layer_i_j_tile_vector() {
         let grid = MapLayer::fill(4, 9, Tile::wall());
@@ -577,5 +647,47 @@ mod tests {
 
         assert_eq!(v[0], (TileLocation::zero(), &Tile::wall()));
         assert_eq!(v.last(), Some(&(TileLocation::new(3, 8), &Tile::wall())));
+    }
+
+    #[test]
+    fn test_tile_location_gets_direction_towards() {
+        assert_eq!(
+            TileLocation::new(0, 0).get_direction_towards(&TileLocation::new(1, 1)),
+            Direction::UpRight
+        );
+        assert_eq!(
+            TileLocation::new(0, 0).get_direction_towards(&TileLocation::new(6, 0)),
+            Direction::Right
+        );
+        assert_eq!(
+            TileLocation::new(0, 0).get_direction_towards(&TileLocation::new(0, 19)),
+            Direction::Up
+        );
+        assert_eq!(
+            TileLocation::new(0, 0).get_direction_towards(&TileLocation::new(-3, 3)),
+            Direction::UpLeft
+        );
+        assert_eq!(
+            TileLocation::new(0, 0).get_direction_towards(&TileLocation::new(-5, 1)),
+            Direction::Left
+        );
+        assert_eq!(
+            TileLocation::new(0, 0).get_direction_towards(&TileLocation::new(-1, -1)),
+            Direction::DownLeft
+        );
+        assert_eq!(
+            TileLocation::new(0, 0).get_direction_towards(&TileLocation::new(3, -1005)),
+            Direction::Down
+        );
+        assert_eq!(
+            TileLocation::new(0, 0).get_direction_towards(&TileLocation::new(1000, -1005)),
+            Direction::DownRight
+        );
+
+        // Parallel transport everything
+        assert_eq!(
+            TileLocation::new(5, -2).get_direction_towards(&TileLocation::new(6, -1)),
+            Direction::UpRight
+        );
     }
 }

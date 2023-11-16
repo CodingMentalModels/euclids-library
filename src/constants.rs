@@ -40,6 +40,10 @@ pub const BLUEPRINT_BLUE: (f32, f32, f32) = (0.25, 0.25, 0.75);
 pub const MIDDLE_DOT: char = '\u{00B7}';
 pub const EM_DASH: char = '\u{2014}';
 
+// Math
+pub const TAN_TAU_OVER_16: f32 = 0.41421356237;
+pub const TAN_3_TAU_OVER_16: f32 = 2.41421356237;
+
 // Greek Letters
 pub const ALPHA_LOWER: char = 'α';
 pub const ALPHA_UPPER: char = 'Α';
