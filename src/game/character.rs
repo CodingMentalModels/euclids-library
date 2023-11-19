@@ -302,13 +302,7 @@ impl BodyPartTreeNode {
         to_state: BodyPartState,
         to_hit: Probability,
     ) -> Damage {
-        let own_probability_given_hit = Probability::from_f32(
-            self.get_size() / (self.get_size() + self.get_total_children_size()),
-        );
-        let children_probability_given_hit = own_probability_given_hit.get_inverse();
-
-        let own_probability = own_probability_given_hit * to_hit;
-        let children_probability = children_probability_given_hit * to_hit;
+        unimplemented!();
     }
 }
 

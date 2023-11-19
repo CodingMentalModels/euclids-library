@@ -173,4 +173,12 @@ pub fn get_warning_text(s: String) -> egui::RichText {
         .size(DEFAULT_FONT_SIZE)
         .color(egui::Color32::RED)
 }
+
+pub fn get_egui_color(rgb: (f32, f32, f32)) -> egui::Color32 {
+    let r = (rgb.0 * 256.) as u8;
+    let g = (rgb.1 * 256.) as u8;
+    let b = (rgb.2 * 256.) as u8;
+
+    egui::Color32::from_rgb(r, g, b)
+}
 // End Helper Functions

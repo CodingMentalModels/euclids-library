@@ -3,14 +3,14 @@ use std::unimplemented;
 
 use bevy::prelude::*;
 use bevy_egui::EguiContexts;
-use egui::{Align2, Color32, Frame, Response, RichText, Ui};
+use egui::{Align2, Color32, Frame, Response, RichText, Rounding, Ui};
 
 use crate::constants::*;
 use crate::game::events::MenuInputEvent;
 use crate::game::{
     character::BodyComponent, events::OpenMenuEvent, player::PlayerComponent, resources::GameState,
 };
-use crate::ui::{get_default_text, get_underlined_text};
+use crate::ui::{get_default_text, get_egui_color, get_underlined_text};
 
 pub struct MenuPlugin;
 
@@ -145,7 +145,16 @@ impl MenuUIState {
                 ),
             )
             .fixed_size(size)
-            .frame(Frame::none().fill(Color32::BLACK))
+            .frame(
+                Frame::none()
+                    .fill(Color32::BLACK)
+                    .rounding(Rounding::same(5.))
+                    .inner_margin(egui::Margin::same(10.))
+                    .stroke(egui::Stroke {
+                        width: 2.,
+                        color: get_egui_color(BLUEPRINT_BLUE),
+                    }),
+            )
             .title_bar(false)
             .show(ctx, |ui| {
                 //  Workaround for https://users.rust-lang.org/t/egui-questions-regarding-window-size/88753/3
